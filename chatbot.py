@@ -306,9 +306,10 @@ class Chatbot:
         # WARNING: Do not use self.ratings directly in this function.          #
         ########################################################################
 
-        # The starter code returns a new matrix shaped like ratings but full of
-        # zeros.
-        binarized_ratings = np.zeros_like(ratings)
+        # tmp has binarized values, but 0's are also incorrectly set to -1.
+        # This is fixed in the second np.where statement
+        tmp = np.where(ratings > threshold, 1, -1)
+        binarized_ratings = np.where(ratings != 0, tmp, 0)
 
         ########################################################################
         #                        END OF YOUR CODE                              #
