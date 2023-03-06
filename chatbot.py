@@ -329,10 +329,12 @@ class Chatbot:
         ########################################################################
         # TODO: Compute cosine similarity between the two vectors.             #
         ########################################################################
-        u_dot_v = np.dot(u, v)
-        u_norm = np.linalg.norm(u)
-        v_norm = np.linalg.norm(v)
-        similarity = u_dot_v/(u_norm*v_norm)
+        u_times_v = u*v                     #returns a vector with 1 or -1 at a movie index where both u and v have ratings, 0 elsewhere
+        norm = np.linalg.norm(u_times_v)    #since values are binarized, u and v will share the same norm
+        if norm == 0:                       #avoids division by zero (in the norm) when u and v have not rated any of the same movies
+            return 0
+        u_times_v = np.sum(u_times_v)       #completes the dot product
+        similarity = u_times_v/(norm**2)
         ########################################################################
         #                          END OF YOUR CODE                            #
         ########################################################################
@@ -374,9 +376,12 @@ class Chatbot:
         # scores.                                                              #
         ########################################################################
 
-        # Populate this list with k movie indices to recommend to the user.
-        recommendations = []
-
+        #Populate this list with k movie indices to recommend to the user.
+        similarities = np.apply_along_axis(self.similarity, 0, ratings_matrix, user_ratings)
+        weighted_ratings = np.matmul(ratings_matrix, similarities)
+        recommendations = np.where(user_ratings != 0, -1000000, weighted_ratings) #values with -1000000 are movies already rated by the user
+        recommendations = np.argsort(recommendations)                             #these values will appear at the front of the array
+        recommendations = list(recommendations[-1: -(k + 1): -1])
         ########################################################################
         #                        END OF YOUR CODE                              #
         ########################################################################
