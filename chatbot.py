@@ -6,6 +6,7 @@
 import util
 
 import numpy as np
+import re
 
 
 # noinspection PyMethodMayBeStatic
@@ -179,7 +180,35 @@ class Chatbot:
         :param title: a string containing a movie title
         :returns: a list of indices of matching movies
         """
-        return []
+        articles = ["An", "A", "The"] 
+        contains_article = False
+        contains_year = False
+        title_regex = ""
+
+        title_tokens = title.split()
+
+        if title_tokens[0] in articles: 
+            contains_article = True
+        if re.match(r"\([0-9]+\)", title_tokens[-1]): 
+            contains_year = True
+
+        if contains_article and contains_year:
+            title_regex = re.escape(" ".join(title_tokens[1:-1]) + ", " 
+                                    + title_tokens[0] + " " + title_tokens[-1])
+        elif contains_article:
+            title_regex = " ".join(title_tokens[1:]) + ", " + title_tokens[0] + r" \([0-9]+\)"
+        elif contains_year:
+            title_regex = re.escape(title)
+        else:
+            title_regex = title + r" \([0-9]+\)"
+        
+        matches = []
+
+        for i in range(len(self.titles)):
+            if re.match(title_regex, self.titles[i][0]):
+                matches.append(i)
+
+        return matches
 
     def extract_sentiment(self, preprocessed_input):
         """Extract a sentiment rating from a line of pre-processed text.
