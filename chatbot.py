@@ -45,22 +45,27 @@ class Chatbot:
             for i in range(1,len(a)):
                 a[i]=a[i].replace('a.k.a. ','')
                 a[i]=a[i].replace(')','')
-            for i in range(0,len(a)-1):
-                if re.match(r', The',a[i][-5:]):
+            for i in range(0,len(a)):
+                if re.match(r', [A-Z][a-z][a-z]',a[i][-5:]):
                     b = a[i][-5:]
                     a[i]=a[i].replace(b,'')
                     b = b.replace(', ','')
                     a[i]= b + ' ' + a[i]        
-                elif re.match(r', An',a[i][-4:]):
+                elif re.match(r', [A-Z][a-z]',a[i][-4:]) or re.match(r", L'",a[i][-4:]):
                     b = a[i][-4:]
                     a[i]=a[i].replace(b,'')
                     b = b.replace(', ','')
                     a[i]= b + ' ' + a[i]
-                elif re.match(r', A',a[i][-3:]):
+                elif re.match(r', [A-Z]',a[i][-3:]):
                     b = a[i][-3:]
                     a[i]=a[i].replace(b,'')
                     b = b.replace(', ','')
-                    a[i]= b + ' ' + a[i]        
+                    a[i]= b + ' ' + a[i]
+                elif re.match(r', [A-Z][a-z][a-z][a-z]',a[i][-6:]):
+                    b = a[i][-6:]
+                    a[i]=a[i].replace(b,'')
+                    b = b.replace(', ','')
+                    a[i]= b + ' ' + a[i]                
             list_title.append(a)
         self.list_title = list_title
         # sang - change each list into a single string 'title1 year title2 year ...'
@@ -223,7 +228,7 @@ class Chatbot:
     
     def compare_input_to_movies(self, text):
         # sang - this function finds best-matching movies based on input
-        # intput is a string, output is a list whose format is
+        # intput is a string, output is a list of lists whose format is
         # [matched string (raw), matched string (raw), matched string (processed), movie title, movie index]
         
         # this part finds all possible matches
@@ -268,12 +273,13 @@ class Chatbot:
             titles = self.extract_titles_starter(text)
         else:
             for i in range(len(self.list_title)):
-                b = re.sub(r'[^\w\s]', '',self.list_title[i][0])
-                b = b.lower()
-                words_movie = b.split()
-                for j in range(len(words_input)-len(words_movie)+1):
-                    if words_input[j:j+len(words_movie)] == words_movie:
-                        titles.append(words_movie)
+                for k in range(len(self.list_title[i])-1):
+                    b = re.sub(r'[^\w\s]', '',self.list_title[i][k])
+                    b = b.lower()
+                    words_movie = b.split()
+                    for j in range(len(words_input)-len(words_movie)+1):
+                        if words_input[j:j+len(words_movie)] == words_movie:
+                            titles.append(words_movie)
             for i in range(len(titles)):
                 concat = titles[i][0]
                 for j in range(1,len(titles[i])):
