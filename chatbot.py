@@ -60,12 +60,7 @@ class Chatbot:
                     b = a[i][-3:]
                     a[i]=a[i].replace(b,'')
                     b = b.replace(', ','')
-                    a[i]= b + ' ' + a[i]
-                elif re.match(r', [A-Z][a-z][a-z][a-z]',a[i][-6:]):
-                    b = a[i][-6:]
-                    a[i]=a[i].replace(b,'')
-                    b = b.replace(', ','')
-                    a[i]= b + ' ' + a[i]                
+                    a[i]= b + ' ' + a[i]               
             list_title.append(a)
         self.list_title = list_title
         # sang - change each list into a single string 'title1 year title2 year ...'
