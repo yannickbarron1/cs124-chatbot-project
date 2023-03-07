@@ -261,21 +261,24 @@ class Chatbot:
         # sang - this function finds the part in the input that seems most likely to be a movie title
         # input is a string, output is a list of strings
         titles = []
+        a = re.sub(r'[^\w\s]', '',text)
+        a = a.lower()
+        words_input = a.split()
         if '"' in text:
             titles = self.extract_titles_starter(text)
         else:
-            best_matches = self.compare_input_to_movies(text)
-            if best_matches == ['no movie found']:
-                titles = ['no title found']
-            ## when there is one best match vs when there are multiple best matches
-            elif best_matches[0]==best_matches[1]:
-                title = best_matches[0]
-                titles.append(title)
-            else:
-                for i in range(len(best_matches)):
-                    title = best_matches[i][0]
-                    titles.append(title)
-                    titles=list(set(titles))
+            for i in range(len(self.list_title)):
+                b = re.sub(r'[^\w\s]', '',self.list_title[i][0])
+                b = b.lower()
+                words_movie = b.split()
+                for j in range(len(words_input)-len(words_movie)+1):
+                    if words_input[j:j+len(words_movie)] == words_movie:
+                        titles.append(words_movie)
+            for i in range(len(titles)):
+                concat = titles[i][0]
+                for j in range(1,len(titles[i])):
+                    concat = concat + ' ' + titles[i][j]
+                titles[i]=concat
         return titles
 
 
