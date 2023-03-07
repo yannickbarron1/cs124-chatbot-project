@@ -26,6 +26,55 @@ class Chatbot:
         self.titles, ratings = util.load_ratings('data/ratings.txt')
         self.sentiment = util.load_sentiment_dictionary('data/sentiment.txt')
 
+
+
+        # sang - read movies.txt
+        with open('data/movies.txt') as f:
+            lines = f.readlines()
+        # sang - pull out titles, each element is a string 'title1 (title2) (title3) ... (year)'
+        string_title = []
+        for i in range(len(lines)):
+            string_title.append(re.split('%',lines[i])[1])
+        self.string_title = string_title
+        # sang - change each element into a list [title1, title2, title3, ..., year]
+        # it also takes care of articles
+        list_title = []
+        for i in range(len(string_title)):
+            a = re.split('\s\(',string_title[i])
+            ## drop unnecessary parts
+            for i in range(1,len(a)):
+                a[i]=a[i].replace('a.k.a. ','')
+                a[i]=a[i].replace(')','')
+            for i in range(0,len(a)-1):
+                if re.match(r', The',a[i][-5:]):
+                    b = a[i][-5:]
+                    a[i]=a[i].replace(b,'')
+                    b = b.replace(', ','')
+                    a[i]= b + ' ' + a[i]        
+                elif re.match(r', An',a[i][-4:]):
+                    b = a[i][-4:]
+                    a[i]=a[i].replace(b,'')
+                    b = b.replace(', ','')
+                    a[i]= b + ' ' + a[i]
+                elif re.match(r', A',a[i][-3:]):
+                    b = a[i][-3:]
+                    a[i]=a[i].replace(b,'')
+                    b = b.replace(', ','')
+                    a[i]= b + ' ' + a[i]        
+            list_title.append(a)
+        self.list_title = list_title
+        # sang - change each list into a single string 'title1 year title2 year ...'
+        # so that it can be compared to input
+        longstring_title = []
+        for i in range(len(list_title)):
+            title = list_title[i][0] + ' ' + list_title[i][-1]
+            for j in range(1,len(list_title[i])-1):
+                title = title + ' ' + list_title[i][j] + ' ' + list_title[i][-1]
+            longstring_title.append(title)
+        self.longstring_title = longstring_title
+
+
+
         ########################################################################
         # TODO: Binarize the movie ratings matrix.                             #
         ########################################################################
@@ -138,7 +187,105 @@ class Chatbot:
 
         return text
 
-    def extract_titles(self, preprocessed_input):
+
+
+    def extract_titles_starter(self, text):
+        # sang - basic title extraction function for starter mode
+        # input is a string, output is a list of strings
+        titles = re.findall(r'"(.*?)"', text)
+        return titles
+            
+    def create_phrases(self, text):
+        # sang - this function creates all possible phrases from the input/title so that they can be compared to each other
+        # intput is a string, output is two lists, whose elements are strings
+        # list of phrases without elimination of punctuation and changing upper > lower case
+        a = re.split('\s',text)
+        phrases1 = []
+        for i in range(len(a)):
+            for j in range(i,len(a)):
+                phrase = a[i]
+                for k in range(i+1,j+1):
+                    phrase = phrase + ' ' + a[k]
+                phrases1.append(phrase)
+                
+        # list of phrases with elimination of punctuation and changing upper > lower case
+        a = re.sub(r'[^\w\s]', '',text)
+        a = a.lower()
+        a = re.split('\s',a)
+        phrases2 = []
+        for i in range(len(a)):
+            for j in range(i,len(a)):
+                phrase = a[i]
+                for k in range(i+1,j+1):
+                    phrase = phrase + ' ' + a[k]
+                phrases2.append(phrase)
+        return phrases1, phrases2
+    
+    def compare_input_to_movies(self, text):
+        # sang - this function finds best-matching movies based on input
+        # intput is a string, output is a list whose format is
+        # [matched string (raw), matched string (raw), matched string (processed), movie title, movie index]
+        
+        # this part finds all possible matches
+        matches=[]
+        inputo, inputp = self.create_phrases(text)
+        for i in range(len(inputp)):
+            for j in range(len(self.longstring_title)):
+                compareo, comparep = self.create_phrases(self.longstring_title[j])
+                if inputp[i] in comparep:
+                    matches.append([inputo[i],inputo[i],inputp[i],self.string_title[j],j])
+        if len(matches)==0:
+            best_matches = ['no movie found']
+        # sang - this part finds best matches based on length of overlapping phrase
+        else:
+            match_length = []
+            for i in range(len(matches)):
+                length = len(matches[i][2])
+                match_length.append(length)
+
+            match_length = np.array(match_length)
+            max_index = np.argwhere(match_length == np.max(match_length))
+            max_index = np.squeeze(max_index)
+            max_index = max_index.tolist()
+
+            if isinstance(max_index,int):
+                best_matches = matches[max_index]
+            elif isinstance(max_index, list):
+                best_matches = []
+                for i in max_index:
+                    best_matches.append(matches[i])
+        
+        return best_matches
+
+    def extract_titles_creative(self, text):
+        # sang - this function finds the part in the input that seems most likely to be a movie title
+        # input is a string, output is a list of strings
+        titles = []
+        a = re.sub(r'[^\w\s]', '',text)
+        a = a.lower()
+        words_input = a.split()
+        if '"' in text:
+            titles = self.extract_titles_starter(text)
+        else:
+            for i in range(len(self.list_title)):
+                b = re.sub(r'[^\w\s]', '',self.list_title[i][0])
+                b = b.lower()
+                words_movie = b.split()
+                for j in range(len(words_input)-len(words_movie)+1):
+                    if words_input[j:j+len(words_movie)] == words_movie:
+                        titles.append(words_movie)
+            for i in range(len(titles)):
+                concat = titles[i][0]
+                for j in range(1,len(titles[i])):
+                    concat = concat + ' ' + titles[i][j]
+                titles[i]=concat
+        return titles
+
+
+
+
+
+    def extract_titles(self, text):
         """Extract potential movie titles from a line of pre-processed text.
 
         Given an input text which has been pre-processed with preprocess(),
@@ -160,9 +307,13 @@ class Chatbot:
         pre-processed with preprocess()
         :returns: list of movie titles that are potentially in the text
         """
-        return []
+        if not self.creative:
+            titles = self.extract_titles_starter(text)
+        elif self.creative:
+            titles = self.extract_titles_creative(text)
+        return titles
 
-    def find_movies_by_title(self, title):
+    def find_movies_by_title_starter(self, title):
         """ Given a movie title, return a list of indices of matching movies.
 
         - If no movies are found that match the given title, return an empty
@@ -209,6 +360,56 @@ class Chatbot:
                 matches.append(i)
 
         return matches
+
+
+        
+    def find_movies_by_title_creative(self, title):
+        # sang - intput is a string, output is a LIST of movie indices
+        movies_found = []
+        
+        if title == 'no title found':
+            movies_found = ['no movie found']
+        
+        else:
+            a = self.compare_input_to_movies(title)
+            if a==['no movie found']:
+                movies_found = ['no movie found']
+            elif a[0]==a[1]:
+                movies_found.append(a[4])
+            else:
+                for j in range(len(a)):
+                    movies_found.append(a[j][4])
+            if len(movies_found)==0:
+                movies_found = ['no movie found']
+        return movies_found
+
+
+    def find_movies_by_title(self, title):
+        """ Given a movie title, return a list of indices of matching movies.
+
+        - If no movies are found that match the given title, return an empty
+        list.
+        - If multiple movies are found that match the given title, return a list
+        containing all of the indices of these matching movies.
+        - If exactly one movie is found that matches the given title, return a
+        list
+        that contains the index of that matching movie.
+
+        Example:
+          ids = chatbot.find_movies_by_title('Titanic')
+          print(ids) // prints [1359, 2716]
+
+        :param title: a string containing a movie title
+        :returns: a list of indices of matching movies
+        """
+        if not self.creative:
+            movies = self.find_movies_by_title_starter(title)
+        elif self.creative:
+            movies = self.find_movies_by_title_creative(title)
+        return movies
+
+
+
 
     def extract_sentiment(self, preprocessed_input):
         """Extract a sentiment rating from a line of pre-processed text.
