@@ -14,9 +14,7 @@ class Chatbot:
     """Simple class to implement the chatbot for PA 6."""
 
     def __init__(self, creative=False):
-        # The chatbot's default name is `moviebot`.
-        # TODO: Give your chatbot a new name.
-        self.name = 'moviebot'
+        self.name = 'movierecommender'
 
         self.creative = creative
 
@@ -73,6 +71,25 @@ class Chatbot:
             longstring_title.append(title)
         self.longstring_title = longstring_title
 
+        # rachel - read sentiment.txt
+        with open('data/sentiment.txt') as f:
+            sentiment_line = f.readlines()
+        # rachel - pull sentiment, each line in the format of "token,neg/pos" and store in dict
+        # at the same time, change "pos" to 1 and "neg" to -1
+        sentiment_tokens = {}
+        for i in range(len(sentiment_line)):
+            split = sentiment_line[i].split(",")
+            if split[1] == "pos":
+                split[1] = 1
+            elif split[1] == "neg":
+                split[1] = -1
+            sentiment_tokens[split[0]] = split[1]
+        self.sentiment_tokens = sentiment_tokens
+        # rachel - create negation word regexes
+        simple_pattern1 = '^[Dd]+[Ii]+[Dd]+\s*?[Nn]+[Oo]+[Tt]+$'
+        simple_pattern2 = '^[Dd]+[Oo]+\s*?[Nn]+[Oo]+[Tt]+$'
+        simple_pattern3 = '^[Dd]+[Ii]+[Dd]+[Nn].*?[Tt]+$'
+        simple_pattern4 = '^[Dd]+[Oo]+[Nn].*?[Tt]+$'
 
 
         ########################################################################
@@ -95,7 +112,7 @@ class Chatbot:
         # TODO: Write a short greeting message                                 #
         ########################################################################
 
-        greeting_message = "How can I help you?"
+        greeting_message = "Nice to meet you!"
 
         ########################################################################
         #                             END OF YOUR CODE                         #
@@ -110,7 +127,7 @@ class Chatbot:
         # TODO: Write a short farewell message                                 #
         ########################################################################
 
-        goodbye_message = "Have a nice day!"
+        goodbye_message = "Have a wonderful day!"
 
         ########################################################################
         #                          END OF YOUR CODE                            #
@@ -283,9 +300,6 @@ class Chatbot:
         return titles
 
 
-
-
-
     def extract_titles(self, text):
         """Extract potential movie titles from a line of pre-processed text.
 
@@ -362,7 +376,6 @@ class Chatbot:
 
         return matches
 
-
         
     def find_movies_by_title_creative(self, title):
         # sang - intput is a string, output is a LIST of movie indices
@@ -410,18 +423,22 @@ class Chatbot:
         return movies
 
 
-
-
     def extract_sentiment(self, preprocessed_input):
-        """Extract a sentiment rating from a line of pre-processed text.
+        """rachel - Extract a sentiment rating from a line of pre-processed text.
 
-        You should return -1 if the sentiment of the text is negative, 0 if the
-        sentiment of the text is neutral (no sentiment detected), or +1 if the
-        sentiment of the text is positive.
+        You should return -1 if the sentiment of the text is negative, 
+        0 if the sentiment of the text is neutral (no sentiment detected), 
+        or +1 if the sentiment of the text is positive.
 
         As an optional creative extension, return -2 if the sentiment of the
         text is super negative and +2 if the sentiment of the text is super
         positive.
+
+        Remember to repeat the sentiment to the user.
+
+        Use the sentiment lexicon to process the sentiment.
+
+        Negative handling?? (see Ed post)
 
         Example:
           sentiment = chatbot.extract_sentiment(chatbot.preprocess(
@@ -432,10 +449,11 @@ class Chatbot:
         pre-processed with preprocess()
         :returns: a numerical value for the sentiment of the text
         """
-        return 0
+        
+
 
     def extract_sentiment_for_movies(self, preprocessed_input):
-        """Creative Feature: Extracts the sentiments from a line of
+        """rachel - Creative Feature: Extracts the sentiments from a line of
         pre-processed text that may contain multiple movies. Note that the
         sentiments toward the movies may be different.
 
