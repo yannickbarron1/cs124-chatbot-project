@@ -252,7 +252,7 @@ class Chatbot:
                 if inputp[i] in comparep:
                     matches.append([inputo[i],inputo[i],inputp[i],self.string_title[j],j])
         if len(matches)==0:
-            best_matches = ['no movie found']
+            best_matches = []
         # sang - this part finds best matches based on length of overlapping phrase
         else:
             match_length = []
@@ -381,20 +381,16 @@ class Chatbot:
         # sang - intput is a string, output is a LIST of movie indices
         movies_found = []
         
-        if title == 'no title found':
-            movies_found = ['no movie found']
-        
+        a = self.compare_input_to_movies(title)
+        if a==[]:
+            movies_found = []
+        elif a[0]==a[1]:
+            movies_found.append(a[4])
         else:
-            a = self.compare_input_to_movies(title)
-            if a==['no movie found']:
-                movies_found = ['no movie found']
-            elif a[0]==a[1]:
-                movies_found.append(a[4])
-            else:
-                for j in range(len(a)):
-                    movies_found.append(a[j][4])
-            if len(movies_found)==0:
-                movies_found = ['no movie found']
+            for j in range(len(a)):
+                movies_found.append(a[j][4])
+        if len(movies_found)==0:
+            movies_found = []
         return movies_found
 
 
