@@ -384,8 +384,6 @@ class Chatbot:
         a = self.compare_input_to_movies(title)
         if a==[]:
             movies_found = []
-        elif len(a)==1:
-            movies_found.append(a[0][4])
         else:
             for j in range(len(a)):
                 movies_found.append(a[j][4])
