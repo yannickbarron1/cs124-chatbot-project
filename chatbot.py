@@ -457,6 +457,53 @@ class Chatbot:
         """
         pass
 
+    def get_minimum_edit_distance(self, str1, str2, max_distance):
+        """Maeghan: calculates minimum edit distance between two words. """
+        len1 = len(str1) + 1
+        len2 = len(str2) + 1
+
+        D = np.zeros((len1, len2))
+
+        for i in range(len1):
+            D[i][0] = i
+
+        for j in range(len2):
+            D[0][j] = j
+
+        for i in range(1, len1):
+            for j in range(1, len2):
+                cost = 0 if str1[i - 1].lower() == str2[j - 1].lower() else 2
+                D[i][j] = np.min([D[i-1][j] + 1, 
+                                    D[i][j-1] + 1, 
+                                    D[i-1][j-1] + cost])
+                
+                if all(x > max_distance for x in D[i, :]):
+                   return max_distance + 1
+                
+        return D[len1 - 1, len2 - 1]
+    
+    def format_title_to_movie_standard(self, title):
+        """Maeghan: calculates minimum edit distance between two words. """
+        articles = ["An", "A", "The"]
+        contains_article = False
+        contains_year = False
+
+        title_tokens = title.split()
+
+        if title_tokens[0] in articles: 
+            contains_article = True
+        if re.match(r"\([0-9]+\)", title_tokens[-1]): 
+            contains_year = True
+
+        if contains_article and contains_year:
+            processed_title = " ".join(title_tokens[1:-1]) + ", " + title_tokens[0] + " " + title_tokens[-1]
+        elif contains_article:
+            processed_title = " ".join(title_tokens[1:]) + ", " + title_tokens[0]
+        else:
+            processed_title = title
+
+        return processed_title, contains_year
+
     def find_movies_closest_to_title(self, title, max_distance=3):
         """Creative Feature: Given a potentially misspelled movie title,
         return a list of the movies in the dataset whose titles have the least
@@ -480,8 +527,21 @@ class Chatbot:
         :returns: a list of movie indices with titles closest to the given title
         and within edit distance max_distance
         """
+        edit_distances = []
 
-        pass
+        formatted_title, contains_year = self.format_title_to_movie_standard(title)
+
+        for i in range(len(self.titles)):
+            movie_title = self.titles[i][0] if contains_year else " ".join(self.titles[i][0].split()[:-1])
+            edit_distances.append(self.get_minimum_edit_distance(formatted_title,  
+                                                            movie_title, 
+                                                            max_distance))
+        
+        min_distance = min(edit_distances)
+        matches = [] if min_distance > max_distance else [i for i, 
+                                                          v in enumerate(edit_distances) 
+                                                          if v ==  min_distance]
+        return matches
 
     def disambiguate(self, clarification, candidates):
         """Creative Feature: Given a list of movies that the user could be
