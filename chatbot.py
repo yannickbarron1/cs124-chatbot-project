@@ -266,7 +266,7 @@ class Chatbot:
             max_index = max_index.tolist()
 
             if isinstance(max_index,int):
-                best_matches = matches[max_index]
+                best_matches = [matches[max_index]]
             elif isinstance(max_index, list):
                 best_matches = []
                 for i in max_index:
@@ -384,8 +384,8 @@ class Chatbot:
         a = self.compare_input_to_movies(title)
         if a==[]:
             movies_found = []
-        elif a[0]==a[1]:
-            movies_found.append(a[4])
+        elif len(a)==1:
+            movies_found.append(a[0][4])
         else:
             for j in range(len(a)):
                 movies_found.append(a[j][4])
