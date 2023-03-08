@@ -449,6 +449,7 @@ class Chatbot:
         pre-processed with preprocess()
         :returns: a numerical value for the sentiment of the text
         """
+        return 0
         
 
 
