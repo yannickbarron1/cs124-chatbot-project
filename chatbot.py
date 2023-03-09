@@ -486,6 +486,7 @@ class Chatbot:
         preprocessed_input = preprocessed_input.lower()
         self.neg_words_regex
         self.neg_verbs_regex
+        pass 
     
     def extract_sentiment(self, preprocessed_input):
         """rachel - this function combines the two functions
@@ -499,7 +500,12 @@ class Chatbot:
         pre-processed with preprocess()
         :returns: a numerical value for the sentiment of the text
         """
-        pass
+        score = 0
+        if not self.creative:
+            score = self.extract_sentiment_starter(preprocessed_input)
+        elif self.creative:
+            score = self.extract_sentiment_creative(preprocessed_input)
+        return score
 
 
     def extract_sentiment_for_movies(self, preprocessed_input):
