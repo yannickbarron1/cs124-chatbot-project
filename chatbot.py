@@ -7,7 +7,7 @@ import util
 
 import numpy as np
 import re
-from porter_stemmer import PorterStemmer
+import porter_stemmer
 
 
 # noinspection PyMethodMayBeStatic
@@ -17,7 +17,7 @@ class Chatbot:
     def __init__(self, creative=False):
         self.name = 'movierecommender'
 
-        self.stemmer = PorterStemmer()
+        self.stemmer = porter_stemmer.PorterStemmer()
 
         self.creative = creative
 
@@ -81,15 +81,19 @@ class Chatbot:
         token_sentiment = {}
         for i in range(len(sentiment_line)):
             split = sentiment_line[i].split(",")
-            if split[1] == "pos":
-                split[1] = 1
-            elif split[1] == "neg":
-                split[1] = -1
-            token_sentiment[split[0]] = split[1]
+            sent_value = 0
+            if split[1] == "pos\n":
+                sent_value = 1
+            elif split[1] == "neg\n":
+                sent_value = -1
+            token_sentiment[split[0]] = sent_value
         self.token_sentiment = token_sentiment
         # rachel - create negation regexes in lower cases
         self.neg_words_regex = r"\b[a-zA-Z]*(?:not|never|no|n't|ain't)\s+\b\w+\b"
         self.punc_trans_regex = r"(?:and|but|\.|,|;|:|\!|\?)"
+        self.special_tokens = {
+            r"enjoy(?:ed|s)?": "enjoy"
+        }
 
 
         ########################################################################
@@ -416,10 +420,10 @@ class Chatbot:
         Returns:
         neg_pairs: a list of sequences starting with each occurrence of a negation word
         """
-        matches = re.findall(self.neg_words_regex + r"(?:(?!_)\W*\b\w+\b)*?", input)
+        matches = re.findall(self.neg_words_regex + r"(?:(?!_)\W*\b\w+\b)*?", text)
         neg_words_dict = {}
         for match in matches:
-            substring = re.findall(match + r"\s(.*?)" + self.punc_trans_regex, input)
+            substring = re.findall(match + r"\s(.*?)" + self.punc_trans_regex, text)
             if substring:
                 negated_words = match + ' ' + ' '.join(re.findall(r"\b\w+\b", substring[0]))
                 neg_words_dict[match] = negated_words
@@ -444,7 +448,8 @@ class Chatbot:
         """
         final_score = 0
         # get rid of movie titles in the input
-        titles = self.extract_title(preprocessed_input)
+        preprocessed_input = preprocessed_input.replace("'", "").replace('"', '')
+        titles = self.extract_titles(preprocessed_input)
         for title in titles:
             preprocessed_input = preprocessed_input.replace(title, "")
         input = preprocessed_input.lower()
@@ -453,24 +458,38 @@ class Chatbot:
         # go through all negation sequences by looking at the starting negation word
         for sequence in neg_seq:
             sequence_tokens = sequence.split()
+
             # go through each token after the 0 index, check their sentiment, and record to results
             for token in sequence_tokens[1:]:
-                stemmed_token = self.stemmer(token)
-                # update score if there is sentiment
+                for pattern, replacement in self.special_tokens.items():
+                    if re.search(pattern, token):
+                        stemmed_token = replacement
+                        break
+                    else:
+                        stemmed_token = self.stemmer.stem(token)
+                # update score if there is sentiment (mind that this is negative sentiment)
                 if stemmed_token in self.token_sentiment:
-                    final_score += self.token_sentiment[stemmed_token]
+                    final_score -= int(self.token_sentiment[stemmed_token])
+
         # delete negation sequences from original input
         for sequence in neg_seq:
             input = input.replace(sequence, "")
         # go through the rest of the input and update sentiment score
         remaining_tokens = input.split()
+
         for token in remaining_tokens:
-            stemmed_token = self.stemmer(token)
+            for pattern, replacement in self.special_tokens.items():
+                    if re.search(pattern, token):
+                        stemmed_token = replacement
+                        break
+                    else:
+                        stemmed_token = self.stemmer.stem(token)
             # update score if there is sentiment
             if stemmed_token in self.token_sentiment:
-                final_score += self.token_sentiment[stemmed_token]
+                final_score += int(self.token_sentiment[stemmed_token])
+                
         # return the sentiment
-        if final_score > 1:
+        if final_score >= 1:
             return 1
         elif final_score == 0:
             return 0
@@ -482,12 +501,15 @@ class Chatbot:
         """rachel - As an optional creative extension, return -2 if the sentiment of the
         text is super negative and +2 if the sentiment of the text is super
         positive.
+
+        really = realli
         """
         preprocessed_input = preprocessed_input.lower()
         self.neg_words_regex
         self.neg_verbs_regex
-        pass 
+        pass
     
+
     def extract_sentiment(self, preprocessed_input):
         """rachel - this function combines the two functions
 
