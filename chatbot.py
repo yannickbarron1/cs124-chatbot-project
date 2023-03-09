@@ -499,7 +499,7 @@ class Chatbot:
         pre-processed with preprocess()
         :returns: a numerical value for the sentiment of the text
         """
-        
+        pass
 
 
     def extract_sentiment_for_movies(self, preprocessed_input):
