@@ -628,7 +628,7 @@ class Chatbot:
             movie_title = self.titles[i][0] if contains_year else " ".join(self.titles[i][0].split()[:-1])
             edit_distances.append(self.get_minimum_edit_distance(formatted_title,  
                                                             movie_title, 
-                                                            max_distance))
+                                                 max_distance))
         
         min_distance = min(edit_distances)
         matches = [] if min_distance > max_distance else [i for i, 
@@ -654,29 +654,20 @@ class Chatbot:
           chatbot.disambiguate("1997", [1359, 2716]) should return [1359]
 
         :param clarification: user input intended to disambiguate between the
-        given movies
+        given movie
         :param candidates: a list of movie indices
         :returns: a list of indices corresponding to the movies identified by
         the clarification
         """
-        matches = []
-        if re.fullmatch(r'\d',clarification):
-            for i in range(len(candidates)):
-                if clarification in self.list_title[candidates[i]][0]:
-                    matches.append(candidates[i])
-        elif re.fullmatch(r'\d\d',clarification) or re.fullmatch(r'\d\d\d\d',clarification):            
-            for i in range(len(candidates)):
-                if clarification in self.list_title[candidates[i]][-1]:
-                    matches.append(candidates[i])
-        else:
-            for i in range(len(candidates)):
-                a = re.sub(r'[^\w\s]', '',clarification).lower()
-                b = re.sub(r'[^\w\s]', '',self.longstring_title[candidates[i]]).lower()
-                if a in b:
-                    matches.append(candidates[i])
-        if len(matches)==0:
-            matches = []
-        return matches
+        results = []
+
+        clarification_regex = rf'^{clarification}$|^{clarification}\W|\W{clarification}$|\W{clarification}\W'
+
+        for candidate_index in candidates:
+            if re.search(clarification_regex, self.titles[candidate_index][0]):
+                results.append(candidate_index)
+
+        return results
 
     ############################################################################
     # 3. Movie Recommendation helper functions                                 #
