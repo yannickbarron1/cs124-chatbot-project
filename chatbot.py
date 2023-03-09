@@ -446,7 +446,6 @@ class Chatbot:
         """
         final_score = 0
         # get rid of movie titles in the input
-        preprocessed_input = preprocessed_input.replace("'", "").replace('"', '')
         titles = self.extract_titles(preprocessed_input)
         for title in titles:
             preprocessed_input = preprocessed_input.replace(title, "")
