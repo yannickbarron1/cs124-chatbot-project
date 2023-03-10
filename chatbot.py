@@ -15,7 +15,7 @@ class Chatbot:
     """Simple class to implement the chatbot for PA 6."""
 
     def __init__(self, creative=False):
-        self.name = 'movierecommender'
+        self.name = 'Quentin'
 
         self.stemmer = porter_stemmer.PorterStemmer()
 
@@ -87,13 +87,20 @@ class Chatbot:
                 sent_value = -1
             token_sentiment[split[0]] = sent_value
         self.token_sentiment = token_sentiment
-        # rachel - create negation regexes in lower cases
+        # rachel - create regexes for extract sentiment
         self.neg_words_regex = r"\b[a-zA-Z]*(?:not|never|no|n't|ain't)\s+\b\w+\b"
-        self.punc_trans_regex = r"(?:and|but|\.|,|;|:|\!|\?)"
+        self.punc_trans_regex = r"(?:and|but|because|since|in that|however|although|yet|despite|in spite of|even though|though|on the other hand|then again|nevertheless|nonetheless|instead|otherwise|notwithstanding|even so|\.|,|;|:|\!|\?)"
         self.special_tokens = {
-            r"enjoy(?:ed|s)?": "enjoy"
+            r"enjoy(?:ed|s)?": "enjoy",
+            r"fanc(?:ies|ied)": "fancy"
         }
-
+        self.strong_tokens = ["really", "extremely", "very", "much", 
+                              "highly", "entirely", "exceptionally", r"extraordinar(?:y|ily)", 
+                              r"total(ly)?", r"absolute(ly)?", "quite", r"definite(ly)?", 
+                              "undoubtedly", "strongly", "at all"]
+        # rachel - list of words that indicate a turn in a sentence
+        self.turn_tokens = ['but', 'however', 'nevertheless', 'nonetheless']
+                        
 
         self.recommended_movies = []
         self.spellcheck = []
@@ -109,9 +116,6 @@ class Chatbot:
 
         # Binarize the movie ratings before storing the binarized matrix.
         self.ratings = Chatbot.binarize(ratings)
-        ########################################################################
-        #                             END OF YOUR CODE                         #
-        ########################################################################
 
     ############################################################################
     # 1. WARM UP REPL                                                          #
@@ -123,7 +127,7 @@ class Chatbot:
         # TODO: Write a short greeting message                                 #
         ########################################################################
 
-        greeting_message = "Nice to meet you! I'm Quentin Tarantino, a movie director known to have a thing for feet. Please tell me about a movie that you liked or didn't like and I'll give you some recommendations."
+        greeting_message = 'Nice to meet you! I\'m Quentin Tarantino, director of films such as "Pulp Fiction" and "Kill Bill". People think I have a thing for feet, and that\'s true. Please tell me about a movie that you liked or didn\'t like and I\'ll give you some recommendations.'
 
         ########################################################################
         #                             END OF YOUR CODE                         #
@@ -134,15 +138,8 @@ class Chatbot:
         """
         Return a message that the chatbot uses to bid farewell to the user.
         """
-        ########################################################################
-        # TODO: Write a short farewell message                                 #
-        ########################################################################
+        goodbye_message = 'Have a wonderful day! If you have time, try my film "Once Upon a Time in Hollywood" with Leo DiCaprio, Brad Pitt, and Margot Robbie.'
 
-        goodbye_message = "Have a wonderful day!"
-
-        ########################################################################
-        #                          END OF YOUR CODE                            #
-        ########################################################################
         return goodbye_message
 
     ############################################################################
@@ -183,7 +180,7 @@ class Chatbot:
             if self.sentiment_counter<5 and self.spellcheck==[] and self.multiple_movies_found==[]:
                 extracted_titles = self.extract_titles(line)
                 if not extracted_titles:
-                    response = "I want to hear about movies. Please tell me about a movie you've seen."
+                    response = "I want to hear about movies. Please tell me about a movie you've seen. Hopefully it's something I made."
                 elif len(extracted_titles) > 1:
                     response = "Please tell me about one movie at a time. Go ahead."
                 else:
@@ -206,21 +203,21 @@ class Chatbot:
                     else:
                         extracted_sentiment = self.extract_sentiment_starter(line)
                         ## need to change to extract_sentiment when creative part is done #################################################
-                        if not extracted_sentiment:
+                        if not extracted_sentiment or extracted_sentiment==0:
                             response = "I'm sorry, I'm not sure if you liked \"{}\". Tell me more about it.".format(valid_title)
                         else:
                             self.user_ratings[matches[0]] = extracted_sentiment
                             self.sentiment_counter += 1 # needs to reset after 5 valid inputs, self.user_ratings does not reset
                             #test
                             if self.sentiment_counter < 5:
-                                if extracted_sentiment == 1:
+                                if extracted_sentiment >0:
                                     response = "So you enjoyed \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
-                                elif extracted_sentiment == -1:
+                                elif extracted_sentiment <0:
                                     response = "So you didn't enjoy \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
                             elif self.sentiment_counter == 5:
-                                if extracted_sentiment == 1:
+                                if extracted_sentiment >0:
                                     print("So you enjoyed \"{}\".".format(valid_title))
-                                elif extracted_sentiment == -1:
+                                elif extracted_sentiment <0:
                                     print("So you didn't enjoy \"{}\".".format(valid_title))
                                 self.recommended_movies = self.recommend(self.user_ratings, self.ratings)
                                 self.just_recommended = self.recommended_movies[0]
@@ -245,21 +242,21 @@ class Chatbot:
                     else:
                         extracted_sentiment = self.extract_sentiment_starter(self.saved_line)
                         ## need to change to extract_sentiment when creative part is done #################################################
-                        if not extracted_sentiment:
+                        if not extracted_sentiment or extracted_sentiment==0:
                             response = "I'm sorry, I'm not sure if you liked \"{}\". Tell me more about it.".format(valid_title)
                         else:
                             self.user_ratings[matches[0]] = extracted_sentiment
                             self.sentiment_counter += 1 # needs to reset after 5 valid inputs, self.user_ratings does not reset
                             #test
                             if self.sentiment_counter < 5:
-                                if extracted_sentiment == 1:
+                                if extracted_sentiment >0:
                                     response = "So you enjoyed \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
-                                elif extracted_sentiment == -1:
+                                elif extracted_sentiment <0:
                                     response = "So you didn't enjoy \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
                             elif self.sentiment_counter == 5:
-                                if extracted_sentiment == 1:
+                                if extracted_sentiment >0:
                                     print("So you enjoyed \"{}\".".format(valid_title))
-                                elif extracted_sentiment == -1:
+                                elif extracted_sentiment <0:
                                     print("So you didn't enjoy \"{}\".".format(valid_title))
                                 self.recommended_movies = self.recommend(self.user_ratings, self.ratings)
                                 self.just_recommended = self.recommended_movies[0]
@@ -279,21 +276,21 @@ class Chatbot:
                     print("So you meant \"{}\".".format(valid_title))
                     extracted_sentiment = self.extract_sentiment_starter(self.saved_line)
                     ## need to change to extract_sentiment when creative part is done #################################################
-                    if not extracted_sentiment:
+                    if not extracted_sentiment or extracted_sentiment==0:
                         response = "I'm sorry, I'm not sure if you liked \"{}\". Tell me more about it.".format(valid_title)
                     else:
                         self.user_ratings[matches[0]] = extracted_sentiment
                         self.sentiment_counter += 1 # needs to reset after 5 valid inputs, self.user_ratings does not reset
                         #test
                         if self.sentiment_counter < 5:
-                            if extracted_sentiment == 1:
+                            if extracted_sentiment >0:
                                 response = "So you enjoyed \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
-                            elif extracted_sentiment == -1:
+                            elif extracted_sentiment <0:
                                 response = "So you didn't enjoy \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
                         elif self.sentiment_counter == 5:
-                            if extracted_sentiment == 1:
+                            if extracted_sentiment >0:
                                 print("So you enjoyed \"{}\".".format(valid_title))
-                            elif extracted_sentiment == -1:
+                            elif extracted_sentiment <0:
                                 print("So you didn't enjoy \"{}\".".format(valid_title))
                             self.recommended_movies = self.recommend(self.user_ratings, self.ratings)
                             self.just_recommended = self.recommended_movies[0]
@@ -311,7 +308,7 @@ class Chatbot:
                                 response = "I think you'll also like \"{}\". This is my final recommendation. If you want more, please tell me about other movies you liked or didn't like!".format(self.string_title[self.just_recommended])
                                 self.sentiment_counter = 0
                 elif line == 'no':
-                    response = 'Thank you for talking to me today. Have a wonderful day!'
+                    response = 'Thank you for talking to me today. Have a wonderful day! If you have time, try my film "Once Upon a Time in Hollywood" with Leo DiCaprio, Brad Pitt, and Margot Robbie.'
                     self.sentiment_counter = 0
                 else:
                     response = "I'm so sorry but I don't understand what you're trying to say. Please tell me if you want another recommendation by saying either yes or no."
@@ -325,7 +322,7 @@ class Chatbot:
             if self.sentiment_counter<5:
                 extracted_titles = self.extract_titles(line)
                 if not extracted_titles:
-                    response = "I want to hear about movies. Please tell me about a movie you've seen."
+                    response = "I want to hear about movies. Please tell me about a movie you've seen. Hopefully it's something I made."
                 elif len(extracted_titles) > 1:
                     response = "Please tell me about one movie at a time. Go ahead."
                 else:
@@ -337,21 +334,21 @@ class Chatbot:
                         response = "There are multiple movies titled \"{}\". Could you be more specific?".format(valid_title)
                     else:
                         extracted_sentiment = self.extract_sentiment(line)
-                        if not extracted_sentiment:
+                        if not extracted_sentiment or extracted_sentiment==0:
                             response = "I'm sorry, I'm not sure if you liked \"{}\". Tell me more about it.".format(valid_title)
                         else:
                             self.user_ratings[matches[0]] = extracted_sentiment
                             self.sentiment_counter += 1 # needs to reset after 5 valid inputs, self.user_ratings does not reset
                             #test
                             if self.sentiment_counter < 5:
-                                if extracted_sentiment == 1:
+                                if extracted_sentiment >0:
                                     response = "So you enjoyed \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
-                                elif extracted_sentiment == -1:
+                                elif extracted_sentiment <0:
                                     response = "So you didn't enjoy \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
                             elif self.sentiment_counter == 5:
-                                if extracted_sentiment == 1:
+                                if extracted_sentiment >0:
                                     print("So you enjoyed \"{}\".".format(valid_title))
-                                elif extracted_sentiment == -1:
+                                elif extracted_sentiment <0:
                                     print("So you didn't enjoy \"{}\".".format(valid_title))
                                 self.recommended_movies = self.recommend(self.user_ratings, self.ratings)
                                 first_recommendation = self.recommended_movies[0]
@@ -389,7 +386,7 @@ class Chatbot:
                     #             response = "I think you'll also like \"{}\". This is my final recommendation. If you want more, please tell me about other movies you liked or didn't like!".format(self.string_title[self.just_recommended])
                     #             self.sentiment_counter = 0
                 elif line == 'no':
-                    response = 'Thank you for talking to me today. Have a wonderful day!'
+                    response = 'Thank you for talking to me today. Have a wonderful day! If you have time, try my film "Once Upon a Time in Hollywood" with Leo DiCaprio, Brad Pitt, and Margot Robbie.'
                     self.sentiment_counter = 0
                 else:
                     response = "I'm so sorry but I don't understand what you're trying to say. Please tell me if you want another recommendation by saying either yes or no."
@@ -422,13 +419,13 @@ class Chatbot:
         return text
 
 
-
     def extract_titles_starter(self, text):
         # sang - basic title extraction function for starter mode
         # input is a string, output is a list of strings
         titles = re.findall(r'"(.*?)"', text)
         return titles
             
+
     def create_phrases(self, text):
         # sang - this function creates all possible phrases from the input/title so that they can be compared to each other
         # intput is a string, output is two lists, whose elements are strings
@@ -455,6 +452,7 @@ class Chatbot:
                 phrases2.append(phrase)
         return phrases1, phrases2
     
+
     def compare_input_to_movies(self, text):
         # sang - this function finds best-matching movies based on input
         # intput is a string, output is a list of lists whose format is
@@ -490,6 +488,7 @@ class Chatbot:
                     best_matches.append(matches[i])
         
         return best_matches
+
 
     def extract_titles_creative(self, text):
         # sang - this function finds the part in the input that seems most likely to be a movie title
@@ -544,6 +543,7 @@ class Chatbot:
         elif self.creative:
             titles = self.extract_titles_creative(text)
         return titles
+
 
     def find_movies_by_title_starter(self, title):
         """ Given a movie title, return a list of indices of matching movies.
@@ -645,7 +645,7 @@ class Chatbot:
         matches = re.findall(self.neg_words_regex + r"(?:(?!_)\W*\b\w+\b)*?", text)
         neg_words_dict = {}
         for match in matches:
-            substring = re.findall(match + r"\s(.*?)" + self.punc_trans_regex, text)
+            substring = re.findall(match + r"\s?(.*?)(?=" + self.punc_trans_regex + "|$)", text)
             if substring:
                 negated_words = match + ' ' + ' '.join(re.findall(r"\b\w+\b", substring[0]))
                 neg_words_dict[match] = negated_words
@@ -657,16 +657,20 @@ class Chatbot:
 
         You should return -1 if the sentiment of the text is negative, 
         0 if the sentiment of the text is neutral (no sentiment detected), 
-        or +1 if the sentiment of the text is positive. - done
+        or +1 if the sentiment of the text is positive. ---
 
-        Use the sentiment lexicon to process the sentiment. - done
+        Use the sentiment lexicon to process the sentiment. ---
 
-        Negative handling?? (see Ed post) - done; helper function above
+        Negative handling?? (see Ed post) ---
 
         Edge cases:
-        1. neutral sentiment - done
-        2. when movie titles contain sentiment "I hate Love Affair" - done; ignores movie titles
-        3. when one clause is more important than the other (esp. "but") - not sure???
+        1. neutral sentiment --- 
+        2. when movie titles contain sentiment "I hate Love Affair" ---
+        3. when one clause is more important than the other - not sure???
+        4. need to account for lack of ending punctuation ---
+        5. when two occurrences of the same description is present
+        6. rest of the the list of special tokens to be added 
+        7. when a negation word finds another negation word
         """
         final_score = 0
         # get rid of movie titles in the input
@@ -679,7 +683,6 @@ class Chatbot:
         # go through all negation sequences by looking at the starting negation word
         for sequence in neg_seq:
             sequence_tokens = sequence.split()
-
             # go through each token after the 0 index, check their sentiment, and record to results
             for token in sequence_tokens[1:]:
                 for pattern, replacement in self.special_tokens.items():
@@ -691,13 +694,13 @@ class Chatbot:
                 # update score if there is sentiment (mind that this is negative sentiment)
                 if stemmed_token in self.token_sentiment:
                     final_score -= int(self.token_sentiment[stemmed_token])
-
         # delete negation sequences from original input
         for sequence in neg_seq:
+            if sequence.endswith(' '):
+                sequence = sequence.rstrip()
             input = input.replace(sequence, "")
         # go through the rest of the input and update sentiment score
         remaining_tokens = input.split()
-
         for token in remaining_tokens:
             for pattern, replacement in self.special_tokens.items():
                     if re.search(pattern, token):
@@ -707,8 +710,7 @@ class Chatbot:
                         stemmed_token = self.stemmer.stem(token)
             # update score if there is sentiment
             if stemmed_token in self.token_sentiment:
-                final_score += int(self.token_sentiment[stemmed_token])
-                
+                final_score += int(self.token_sentiment[stemmed_token])  
         # return the sentiment
         if final_score >= 1:
             return 1
@@ -723,7 +725,8 @@ class Chatbot:
         text is super negative and +2 if the sentiment of the text is super
         positive.
 
-        really = realli
+        implementations: 
+        - strong words
         """
         preprocessed_input = preprocessed_input.lower()
         self.neg_words_regex
@@ -757,6 +760,8 @@ class Chatbot:
         sentiments toward the movies may be different.
 
         You should use the same sentiment values as extract_sentiment, described
+
+        Do not have to worry about missing quotation marks or incorrect capitalization
 
         above.
         Hint: feel free to call previously defined functions to implement this.
@@ -888,7 +893,7 @@ class Chatbot:
         clarification_regex = rf'^{clarification}$|^{clarification}\W|\W{clarification}$|\W{clarification}\W'
 
         for candidate_index in candidates:
-            if re.search(clarification_regex, self.titles[candidate_index][0]):
+            if re.search(clarification_regex, self.titles[candidate_index][0], re.IGNORECASE):
                 results.append(candidate_index)
 
         return results
@@ -916,20 +921,10 @@ class Chatbot:
 
         :returns: a binarized version of the movie-rating matrix
         """
-        ########################################################################
-        # TODO: Binarize the supplied ratings matrix.                          #
-        #                                                                      #
-        # WARNING: Do not use self.ratings directly in this function.          #
-        ########################################################################
-
         # tmp has binarized values, but 0's are also incorrectly set to -1.
         # This is fixed in the second np.where statement
         tmp = np.where(ratings > threshold, 1, -1)
         binarized_ratings = np.where(ratings != 0, tmp, 0)
-
-        ########################################################################
-        #                        END OF YOUR CODE                              #
-        ########################################################################
         return binarized_ratings
 
     def similarity(self, u, v):
@@ -942,9 +937,6 @@ class Chatbot:
 
         :returns: the cosine similarity between the two vectors
         """
-        ########################################################################
-        # TODO: Compute cosine similarity between the two vectors.             #
-        ########################################################################
         uDotV = np.dot(u, v)
         normu = np.linalg.norm(u)
         normv = np.linalg.norm(v)
@@ -952,9 +944,6 @@ class Chatbot:
         if norm_prod == 0:  #avoids division by 0
             return 0        #sets similarity to 0 indicating that the movies were not rated by any of the same people
         similarity = uDotV/(norm_prod)
-        ########################################################################
-        #                          END OF YOUR CODE                            #
-        ########################################################################
         return similarity
     
     # builds similarity vector using the current movie as the reference
@@ -984,20 +973,6 @@ class Chatbot:
         :returns: a list of k movie indices corresponding to movies in
         ratings_matrix, in descending order of recommendation.
         """
-
-        ########################################################################
-        # TODO: Implement a recommendation function that takes a vector        #
-        # user_ratings and matrix ratings_matrix and outputs a list of movies  #
-        # recommended by the chatbot.                                          #
-        #                                                                      #
-        # WARNING: Do not use the self.ratings matrix directly in this         #
-        # function.                                                            #
-        #                                                                      #
-        # For starter mode, you should use item-item collaborative filtering   #
-        # with cosine similarity, no mean-centering, and no normalization of   #
-        # scores.                                                              #
-        ########################################################################
-
         #Populate this list with k movie indices to recommend to the user.
         idxes = np.nonzero(user_ratings)
         rated = ratings_matrix[idxes]
@@ -1005,9 +980,6 @@ class Chatbot:
         weighted = np.dot(user_ratings[idxes], similarities)
         weighted[idxes] = -1000000  #hardcoded but it forces all movies that were already rated to show up at the beginning of the vector
         recommendations = list(np.argsort(weighted)[-1: -k - 1: -1])
-        ########################################################################
-        #                        END OF YOUR CODE                              #
-        ########################################################################
         return recommendations
 
     ############################################################################
@@ -1028,17 +1000,15 @@ class Chatbot:
     # 5. Write a description for your chatbot here!                            #
     ############################################################################
     def intro(self):
-        """Return a string to use as your chatbot's description for the user.
-
-        Consider adding to this description any information about what your
-        chatbot can do and how the user can interact with it.
-        """
         return """
-        Your task is to implement the chatbot as detailed in the PA7
-        instructions.
-        Remember: in the starter mode, movie names will come in quotation marks
-        and expressions of sentiment will be simple!
-        TODO: Write here the description for your own chatbot!
+        The movie recommender is a chatbot that recommends movie titles to the user based
+        on user's profile. In the basic mode, the chatbot requires 5 datapoints of input from
+        the user to decide what movie to recommend to the user. The inputs from the user are
+        generally strict, such as movies having to be quoted in quotation marks, as well as 
+        the required simplicity of the sentence. In the creative mode, the chatbot is able 
+        to perform more nuanced lingusitic tasks and allows for more verbal freedom from the
+        user. The chatbot is a first attempt to mimick human capacity of natural language 
+        processing and understanding.
         """
 
 
