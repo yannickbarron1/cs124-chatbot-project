@@ -8,7 +8,21 @@ import util
 import numpy as np
 import re
 import porter_stemmer
+import random
+from enum import Enum, auto
 
+class ResponseCode(Enum):
+            NO_TITLE = auto()
+            TOO_MANY_TITLES = auto()
+            NO_MATCHES = auto()
+            MULTIPLE_MATCHES = auto()
+            SENTIMENT_NEUTRAL = auto()
+            SENTIMENT_POSITIVE = auto()
+            SENTIMENT_NEGATIVE = auto()
+            GIVE_RECOMMENDATION = auto()
+            GIVE_FINAL_RECOMMENDATION = auto()
+            NO_FURTHER_RECOMMENDATIONS = auto()
+            YES_NO_ABSENT = auto()
 
 # noinspection PyMethodMayBeStatic
 class Chatbot:
@@ -110,6 +124,7 @@ class Chatbot:
         self.user_ratings = np.array([0]*len(self.titles))
         self.sentiment_counter = 0
         self.recommendation_idx = 0
+        
         ########################################################################
         # TODO: Binarize the movie ratings matrix.                             #
         ########################################################################
@@ -145,6 +160,79 @@ class Chatbot:
     ############################################################################
     # 2. Modules 2 and 3: extraction and transformation                        #
     ############################################################################
+
+    def generate_response(self, response_code, movie_title=None):
+        num_responses = 5
+        possible_responses = ""
+        if response_code == ResponseCode.NO_TITLE:
+            possible_responses = ["I want to hear about movies. Please tell me about a movie you've seen. Hopefully it's something I made.",
+                                  "I'm not interested in that. Tell me about a movie you've seen recently and whether or not you liked it.",
+                                  "This conversation's going nowhere. Do you know what a movie is? Tell me about one you liked or disliked.",
+                                  "Yo, we're talking about movies here, buddy.",
+                                  "Whatever it is you're trying to tell me, I don't wanna hear it. I'm only hear to talk about movies."]
+        elif response_code == ResponseCode.TOO_MANY_TITLES:
+            possible_responses = ["Please tell me about one movie at a time. Go ahead.",
+                                  "I'm gonna need you to slow down. Tell me about one movie.",
+                                  "Don't get too excited, just tell me how you felt about a single movie.",
+                                  "That's a lot of movies, give me one at a time.",
+                                  "You talk a lot. Stick to one movie at a time."]
+        elif response_code == ResponseCode.NO_MATCHES:
+            possible_responses = ["I don't think there's a movie titled \"{}\", sorry...".format(movie_title), 
+                                  "I couldn't find a movie with the title \"{}\".".format(movie_title),
+                                  "It looks like \"{}\" wasn't the right title.".format(movie_title),
+                                  "You should try again. \"{}\" wasn't the right title.".format(movie_title),
+                                  "Hmmm, there weren't any movies with the title \"{}\".".format(movie_title)]
+        elif response_code == ResponseCode.MULTIPLE_MATCHES:
+            possible_responses = ["There are multiple movies titled \"{}\". Could you be more specific?".format(movie_title),
+                                  "It looks like a lot of movied have the title \"{}\". Could you give me more information?".format(movie_title),
+                                  "Sorry, there are way too many movies with the title \"{}\". Try including the year the movie was made".format(movie_title),
+                                  "Oof, \"{}\" seems to be a popular name for movies. Be more specific.".format(movie_title),
+                                  "I found a lot of movies, but I don't know which one you meant \"{}\". You're gonna have to help me out here by giving more information".format(movie_title)]
+        elif response_code == ResponseCode.SENTIMENT_NEUTRAL:
+            possible_responses = ["I'm sorry, I'm not sure if you liked \"{}\". Tell me more about it.".format(movie_title),
+                                  "That's a pretty neutral feeling towards \"{}\". Be honest, how do you REALLY feel about that movie?".format(movie_title),
+                                  "I need an honest response about \"{}\". Tell me how it made you feel.".format(movie_title),
+                                  "It's impossible to be entirely neutral about \"{}\". I won't judge you. Be honest.".format(movie_title),
+                                  "Did you like \"{}\"? I need to know.".format(movie_title)]
+        elif response_code == ResponseCode.SENTIMENT_POSITIVE:
+            possible_responses = ["So you enjoyed \"{}\". Tell me about another movie you liked or didn't like.".format(movie_title),
+                                  "Wow, I can't believe you liked \"{}\". What other movies do you have strong feelings about?".format(movie_title),
+                                  "I never would've guessed you liked \"{}\". I'm interested in hearing about other movies. Tell me more.".format(movie_title),
+                                  "Oooof, I won't judge you for liking \"{}\". Maybe a little. Give me another movie, be sure to tell me how you feel about it.".format(movie_title),
+                                  "Nice, \"{}\" is one of my guilty pleasures too. Give me another movie, I wanna know if we have anything else in common.".format(movie_title)]
+        elif response_code == ResponseCode.SENTIMENT_NEGATIVE:
+            possible_responses = ["So you didn't enjoy \"{}\". Tell me about another movie you liked or didn't like.".format(movie_title),
+                                  "I HATED \"{}\". Tell me about another movie.".format(movie_title),
+                                  "\"{}\" is one of my favorite movies. I feel bad for anyone who didn't like it. Tell me more about your bad taste in movies.".format(movie_title),
+                                  "Yeah, \"{}\" was pretty awful. What other movies do you have strong feelings about?.".format(movie_title),
+                                  "\"{}\" was so bad I cried. I need to know what other movies gave you strong emotional reactions.".format(movie_title)]
+        elif response_code == ResponseCode.GIVE_RECOMMENDATION:
+            possible_responses = ["I think you'll like \"{}\". Do you want another recommendation? (yes/no)".format(movie_title),
+                                  "You're gonna love \"{}\". I have more suggestions, want one? (yes/no)".format(movie_title),
+                                  "\"{}\" might be a pleasant watch. Want another recommendation? (yes/no)".format(movie_title),
+                                  "Watch \"{}\" and get back to me. I wanna know what you think. Do you have time for another recommendation? (yes/no)".format(movie_title),
+                                  "Put \"{}\" on your watchlist. Thank me later. I have another one for your list. Wanna hear it? (yes/no)".format(movie_title)]
+        elif response_code == ResponseCode.GIVE_FINAL_RECOMMENDATION:
+            possible_responses = ["I think you'll also like \"{}\". This is my final recommendation. If you want more, please tell me about other movies you liked or didn't like!".format(movie_title),
+                                  "Last one. Watch \"{}\". Let's start over. Give me a movie that you liked or disliked.".format(movie_title),
+                                  "Finally, you need to see \"{}\". Let's do this again. It was fun. Tell me how you felt about the last movie you watched.".format(movie_title),
+                                  "I'm gonna stop here. Make sure to watch \"{}\". Let's start over and see what new suggestions I can give you. Tell me how you felt about any movie you've seen.".format(movie_title),
+                                  "You might like \"{}\". I don't have any more suggestions. I need to know more about your opinion towards other movies.".format(movie_title)]
+        elif response_code == ResponseCode.NO_FURTHER_RECOMMENDATIONS:
+            possible_responses = ["Damn, ok. Let's start over. please tell me about other movies you liked or didn't like!",
+                                  "Ok, it's cool. Tell me about movies you've seen.",
+                                  "You don't like my taste in movies? Let's explore yours, what's a movie you feel strongly about?",
+                                  "I did all that work and you don't want my recommendations. Aight, I guess I'll keep listening. Let's hear more about your taste in movies.",
+                                  "You're rude, but I'm here to listen. Let's talk about movies you liked or disliked.",
+                                  "Thank you for talking to me today. We can start over. If you have time, try my film \"Once Upon a Time in Hollywood\" with Leo DiCaprio, Brad Pitt, and Margot Robbie."]
+        elif response_code == ResponseCode.YES_NO_ABSENT:
+            possible_responses = ["Please answer the question with (yes/no)",
+                                  "I'm expecting a yes or a no.",
+                                  "I don't need to hear that. Give me a yes or a no.",
+                                  "It's not that hard, just say yes or no.",
+                                  "Please just say yes or no"]
+        return possible_responses[random.randint(0, num_responses - 1)]
+        
 
     def process(self, line):
         """Process a line of input from the REPL and generate a response.
@@ -314,87 +402,57 @@ class Chatbot:
                     response = "I'm so sorry but I don't understand what you're trying to say. Please tell me if you want another recommendation by saying either yes or no."
 
 
-
-
-
         # this is the starter section
         else:
             if self.sentiment_counter<5:
                 extracted_titles = self.extract_titles(line)
                 if not extracted_titles:
-                    response = "I want to hear about movies. Please tell me about a movie you've seen. Hopefully it's something I made."
+                    response = self.generate_response(ResponseCode.NO_TITLE)
                 elif len(extracted_titles) > 1:
-                    response = "Please tell me about one movie at a time. Go ahead."
+                    response = self.generate_response(ResponseCode.TOO_MANY_TITLES)
                 else:
                     valid_title = extracted_titles[0]
                     matches = self.find_movies_by_title(valid_title)
                     if not matches:
-                        response = "I don't think there's a movie titled \"{}\", sorry...".format(valid_title)
+                        response = self.generate_response(ResponseCode.NO_MATCHES, valid_title)
                     elif len(matches) > 1:
-                        response = "There are multiple movies titled \"{}\". Could you be more specific?".format(valid_title)
+                        response = self.generate_response(ResponseCode.MULTIPLE_MATCHES, valid_title)
                     else:
                         extracted_sentiment = self.extract_sentiment(line)
                         if not extracted_sentiment or extracted_sentiment==0:
-                            response = "I'm sorry, I'm not sure if you liked \"{}\". Tell me more about it.".format(valid_title)
+                            response = self.generate_response(ResponseCode.SENTIMENT_NEUTRAL, valid_title)
                         else:
                             self.user_ratings[matches[0]] = extracted_sentiment
-                            self.sentiment_counter += 1 # needs to reset after 5 valid inputs, self.user_ratings does not reset
-                            #test
+                            self.sentiment_counter += 1
                             if self.sentiment_counter < 5:
                                 if extracted_sentiment >0:
-                                    response = "So you enjoyed \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
+                                    response = self.generate_response(ResponseCode.SENTIMENT_POSITIVE, valid_title)
                                 elif extracted_sentiment <0:
-                                    response = "So you didn't enjoy \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
+                                    response = self.generate_response(ResponseCode.SENTIMENT_NEGATIVE, valid_title)
                             elif self.sentiment_counter == 5:
-                                if extracted_sentiment >0:
-                                    print("So you enjoyed \"{}\".".format(valid_title))
-                                elif extracted_sentiment <0:
-                                    print("So you didn't enjoy \"{}\".".format(valid_title))
                                 self.recommended_movies = self.recommend(self.user_ratings, self.ratings)
-                                first_recommendation = self.recommended_movies[0]
-                                response = "I think you'll like \"{}\". Do you want another recommendation? (yes/no)".format(self.titles[first_recommendation])
+                                self.just_recommended = self.recommended_movies[0]
+                                response = "Ok, I have enough information. " + self.generate_response(ResponseCode.GIVE_RECOMMENDATION, self.string_title[self.just_recommended])
                                 self.recommendation_idx += 1
-                                # self.just_recommended = self.recommended_movies[0]
-                                # response = "I think you'll like \"{}\". Do you want another recommendation? (yes/no)".format(self.string_title[self.just_recommended])
-                                
                                 
             elif self.sentiment_counter==5:
-                if line == 'yes': #and self.just_recommended != self.recommended_movies[-1]:
-                    curr_recommendation = self.recommended_movies[self.recommendation_idx]
+                if line == 'yes':
+                    self.just_recommended = self.recommended_movies[self.recommendation_idx]
                     if self.recommendation_idx == len(self.recommended_movies) - 1:
-                        response = "I think you'll also like \"{}\". This is my final recommendation. If you want more, please tell me about other movies you liked or didn't like!".format(self.titles[curr_recommendation])
+                        response = self.generate_response(ResponseCode.GIVE_FINAL_RECOMMENDATION, self.string_title[self.just_recommended])
                         self.sentiment_counter = 0
                         self.recommendation_idx = 0
-                        self.user_ratings = [0]*len(self.titles) #very inefficient; allocates space and sets every idx to zero every time we finish recommending. As long as the instance is active, there will be space allocated for the array, we only need to keep track of the idxes for movies the user has rated. We only need to build the array before calling recommend. Doesn't really matter for the project.
+                        self.user_ratings = [0]*len(self.titles) #very inefficient, but doesn't affect output;
                     else:
-                        response = "I think you'll also like \"{}\". Do you want another recommendation? (yes/no)".format(self.titles[curr_recommendation])
+                        response = self.generate_response(ResponseCode.GIVE_RECOMMENDATION, self.string_title[self.just_recommended])
                         self.recommendation_idx += 1
-                        
-                    ###########################
-                    #Buggy
-                    #After the first "yes", the for loop runs to completion. It replaces the response each iteration and, because it loops 
-                    #through the entire array, response is set to contain the last title in the array. So, after one "yes", we print out 
-                    #the statement saying that this is the fina; recommendation and we give the user the title of the final recommendation. I 
-                    #don't think we need a for loop, just something to keep track of where we are in the recommendations array.
-                    ###########################
-                    # for i in range(len(self.recommended_movies)-1):
-                    #     if self.just_recommended == self.recommended_movies[i]:
-                    #         self.just_recommended = self.recommended_movies[i+1]
-                    #         if i<len(self.recommended_movies)-2:
-                    #             response = "I think you'll also like \"{}\". Do you want another recommendation? (yes/no)".format(self.string_title[self.just_recommended])
-                    #         elif i == len(self.recommended_movies)-2:
-                    #             response = "I think you'll also like \"{}\". This is my final recommendation. If you want more, please tell me about other movies you liked or didn't like!".format(self.string_title[self.just_recommended])
-                    #             self.sentiment_counter = 0
                 elif line == 'no':
-                    response = 'Thank you for talking to me today. Have a wonderful day! If you have time, try my film "Once Upon a Time in Hollywood" with Leo DiCaprio, Brad Pitt, and Margot Robbie.'
+                    response = self.generate_response(ResponseCode.NO_FURTHER_RECOMMENDATIONS)
                     self.sentiment_counter = 0
                     self.user_ratings = [0]*len(self.titles)
                     self.recommendation_idx = 0
                 else:
-                    response = "I'm so sorry but I don't understand what you're trying to say. Please tell me if you want another recommendation by saying either yes or no."
-
-
-
+                    response = self.generate_response(ResponseCode.YES_NO_ABSENT)
         ########################################################################
         #                          END OF YOUR CODE                            #
         ########################################################################
