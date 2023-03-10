@@ -867,7 +867,7 @@ class Chatbot:
         clarification_regex = rf'^{clarification}$|^{clarification}\W|\W{clarification}$|\W{clarification}\W'
 
         for candidate_index in candidates:
-            if re.search(clarification_regex, self.titles[candidate_index][0]):
+            if re.search(clarification_regex, self.titles[candidate_index][0], re.IGNORECASE):
                 results.append(candidate_index)
 
         return results
