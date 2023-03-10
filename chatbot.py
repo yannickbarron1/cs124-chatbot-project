@@ -192,7 +192,7 @@ class Chatbot:
                         response = "I'm sorry, I'm not sure if you liked \"{}\". Tell me more about it.".format(valid_title)
                     else:
                         self.user_ratings[matches[0]] = extracted_sentiment
-                        self.sentiment_counter += 1 # needs to resethgjhg after 5 valid inputs, self.user_ratings does not reset
+                        self.sentiment_counter += 1 # needs to reset after 5 valid inputs, self.user_ratings does not reset
                         #test
                         if self.sentiment_counter == 5:
                             recommendations = self.recommend(self.user_ratings, self.ratings)
