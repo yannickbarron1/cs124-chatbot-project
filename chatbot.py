@@ -389,6 +389,7 @@ class Chatbot:
                     response = 'Thank you for talking to me today. Have a wonderful day! If you have time, try my film "Once Upon a Time in Hollywood" with Leo DiCaprio, Brad Pitt, and Margot Robbie.'
                     self.sentiment_counter = 0
                     self.user_ratings = [0]*len(self.titles)
+                    self.recommendation_idx = 0
                 else:
                     response = "I'm so sorry but I don't understand what you're trying to say. Please tell me if you want another recommendation by saying either yes or no."
 
