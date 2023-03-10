@@ -388,6 +388,7 @@ class Chatbot:
                 elif line == 'no':
                     response = 'Thank you for talking to me today. Have a wonderful day! If you have time, try my film "Once Upon a Time in Hollywood" with Leo DiCaprio, Brad Pitt, and Margot Robbie.'
                     self.sentiment_counter = 0
+                    self.user_ratings = [0]*len(self.titles)
                 else:
                     response = "I'm so sorry but I don't understand what you're trying to say. Please tell me if you want another recommendation by saying either yes or no."
 
@@ -425,7 +426,6 @@ class Chatbot:
         titles = re.findall(r'"(.*?)"', text)
         return titles
             
-
     def create_phrases(self, text):
         # sang - this function creates all possible phrases from the input/title so that they can be compared to each other
         # intput is a string, output is two lists, whose elements are strings
@@ -452,7 +452,6 @@ class Chatbot:
                 phrases2.append(phrase)
         return phrases1, phrases2
     
-
     def compare_input_to_movies(self, text):
         # sang - this function finds best-matching movies based on input
         # intput is a string, output is a list of lists whose format is
@@ -488,7 +487,6 @@ class Chatbot:
                     best_matches.append(matches[i])
         
         return best_matches
-
 
     def extract_titles_creative(self, text):
         # sang - this function finds the part in the input that seems most likely to be a movie title
@@ -543,7 +541,6 @@ class Chatbot:
         elif self.creative:
             titles = self.extract_titles_creative(text)
         return titles
-
 
     def find_movies_by_title_starter(self, title):
         """ Given a movie title, return a list of indices of matching movies.
@@ -696,8 +693,6 @@ class Chatbot:
                     final_score -= int(self.token_sentiment[stemmed_token])
         # delete negation sequences from original input
         for sequence in neg_seq:
-            if sequence.endswith(' '):
-                sequence = sequence.rstrip()
             input = input.replace(sequence, "")
         # go through the rest of the input and update sentiment score
         remaining_tokens = input.split()
@@ -760,8 +755,6 @@ class Chatbot:
         sentiments toward the movies may be different.
 
         You should use the same sentiment values as extract_sentiment, described
-
-        Do not have to worry about missing quotation marks or incorrect capitalization
 
         above.
         Hint: feel free to call previously defined functions to implement this.
