@@ -27,6 +27,9 @@ class Chatbot:
         self.titles, ratings = util.load_ratings('data/ratings.txt')
         self.sentiment = util.load_sentiment_dictionary('data/sentiment.txt')
 
+        # yannick - keep track of user ratings and number of recommendations given
+        self.user_ratings = np.array([0]*len(self.titles))
+        self.sentiment_counter = 0
 
         # sang - read movies.txt
         with open('data/movies.txt') as f:
@@ -171,7 +174,37 @@ class Chatbot:
         if self.creative:
             response = "I processed {} in creative mode!!".format(line)
         else:
-            response = "I processed {} in starter mode!!".format(line)
+            extracted_titles = self.extract_titles(line)
+            if not extracted_titles:
+                response = "I want to hear about movies. Please tell me about a movie you've seen."
+            elif len(extracted_titles) > 1:
+                response = "Please tell me about one movie at a time. Go ahead."
+            else:
+                valid_title = extracted_titles[0]
+                matches = self.find_movies_by_title(valid_title)
+                if not matches:
+                    response = "I didn't find any movies with the title \"{}\", sorry...".format(valid_title)
+                elif len(matches) > 1:
+                    response = "I found more than one movie called \"{}\". Can you clarify?".format(valid_title)
+                else:
+                    extracted_sentiment = self.extract_sentiment(line)
+                    if not extracted_sentiment:
+                        response = "I'm sorry, I'm not sure if you liked \"{}\". Tell me more about it.".format(valid_title)
+                    else:
+                        self.user_ratings[matches[0]] = extracted_sentiment
+                        self.sentiment_counter += 1 # needs to resethgjhg after 5 valid inputs, self.user_ratings does not reset
+                        #test
+                        if self.sentiment_counter == 5:
+                            recommendations = self.recommend(self.user_ratings, self.ratings)
+                            print(recommendations)
+                            response = "This is where I'm supposed to recommend a movie, and ask if you want another recommendation."
+                            #not sure where to create loop for the ask/response
+                            #have to keep asking if the user wants recommendations until the bot runs out of recommendations or the user says no
+                        else:
+                            response = "Ok, you liked/disliked \"{}\"! Tell me what you thought of another movie.".format(valid_title)
+                        
+
+
 
         ########################################################################
         #                          END OF YOUR CODE                            #
