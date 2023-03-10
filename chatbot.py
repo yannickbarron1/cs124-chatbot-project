@@ -27,6 +27,7 @@ class Chatbot:
         self.titles, ratings = util.load_ratings('data/ratings.txt')
         self.sentiment = util.load_sentiment_dictionary('data/sentiment.txt')
 
+
         # sang - read movies.txt
         with open('data/movies.txt') as f:
             lines = f.readlines()
@@ -146,7 +147,37 @@ class Chatbot:
         if self.creative:
             response = "I processed {} in creative mode!!".format(line)
         else:
-            response = "I processed {} in starter mode!!".format(line)
+            extracted_titles = self.extract_titles(line)
+            if not extracted_titles:
+                response = "I want to hear about movies. Please tell me about a movie you've seen."
+            elif len(extracted_titles) > 1:
+                response = "Please tell me about one movie at a time. Go ahead."
+            else:
+                valid_title = extracted_titles[0]
+                matches = self.find_movies_by_title(valid_title)
+                if not matches:
+                    response = "I didn't find any movies with the title \"{}\", sorry...".format(valid_title)
+                elif len(matches) > 1:
+                    response = "I found more than one movie called \"{}\". Can you clarify?".format(valid_title)
+                else:
+                    extracted_sentiment = self.extract_sentiment(line)
+                    if not extracted_sentiment:
+                        response = "I'm sorry, I'm not sure if you liked \"{}\". Tell me more about it.".format(valid_title)
+                    else:
+                        self.user_ratings[matches[0]] = extracted_sentiment
+                        self.sentiment_counter += 1 # needs to reset after 5 valid inputs, self.user_ratings does not reset
+                        #test
+                        if self.sentiment_counter == 5:
+                            recommendations = self.recommend(self.user_ratings, self.ratings)
+                            print(recommendations)
+                            response = "This is where I'm supposed to recommend a movie, and ask if you want another recommendation."
+                            #not sure where to create loop for the ask/response
+                            #have to keep asking if the user wants recommendations until the bot runs out of recommendations or the user says no
+                        else:
+                            response = "Ok, you liked/disliked \"{}\"! Tell me what you thought of another movie.".format(valid_title)
+                        
+
+
 
         ########################################################################
         #                          END OF YOUR CODE                            #
@@ -606,7 +637,7 @@ class Chatbot:
             movie_title = self.titles[i][0] if contains_year else " ".join(self.titles[i][0].split()[:-1])
             edit_distances.append(self.get_minimum_edit_distance(formatted_title,  
                                                             movie_title, 
-                                                            max_distance))
+                                                 max_distance))
         
         min_distance = min(edit_distances)
         matches = [] if min_distance > max_distance else [i for i, 
@@ -632,29 +663,20 @@ class Chatbot:
           chatbot.disambiguate("1997", [1359, 2716]) should return [1359]
 
         :param clarification: user input intended to disambiguate between the
-        given movies
+        given movie
         :param candidates: a list of movie indices
         :returns: a list of indices corresponding to the movies identified by
         the clarification
         """
-        matches = []
-        if re.fullmatch(r'\d',clarification):
-            for i in range(len(candidates)):
-                if clarification in self.list_title[candidates[i]][0]:
-                    matches.append(candidates[i])
-        elif re.fullmatch(r'\d\d',clarification) or re.fullmatch(r'\d\d\d\d',clarification):            
-            for i in range(len(candidates)):
-                if clarification in self.list_title[candidates[i]][-1]:
-                    matches.append(candidates[i])
-        else:
-            for i in range(len(candidates)):
-                a = re.sub(r'[^\w\s]', '',clarification).lower()
-                b = re.sub(r'[^\w\s]', '',self.longstring_title[candidates[i]]).lower()
-                if a in b:
-                    matches.append(candidates[i])
-        if len(matches)==0:
-            matches = []
-        return matches
+        results = []
+
+        clarification_regex = rf'^{clarification}$|^{clarification}\W|\W{clarification}$|\W{clarification}\W'
+
+        for candidate_index in candidates:
+            if re.search(clarification_regex, self.titles[candidate_index][0]):
+                results.append(candidate_index)
+
+        return results
 
     ############################################################################
     # 3. Movie Recommendation helper functions                                 #
