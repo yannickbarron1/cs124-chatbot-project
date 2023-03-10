@@ -381,27 +381,6 @@ class Chatbot:
         return response
 
 
-    def disambiguate(self, clarification, candidates):
-        matches = []
-        if re.fullmatch(r'\d',clarification):
-            for i in range(len(candidates)):
-                if clarification in self.list_title[candidates[i]][0]:
-                    matches.append(candidates[i])
-        elif re.fullmatch(r'\d\d',clarification) or re.fullmatch(r'\d\d\d\d',clarification):            
-            for i in range(len(candidates)):
-                if clarification in self.list_title[candidates[i]][-1]:
-                    matches.append(candidates[i])
-        else:
-            for i in range(len(candidates)):
-                a = re.sub(r'[^\w\s]', '',clarification).lower()
-                b = re.sub(r'[^\w\s]', '',self.longstring_title[candidates[i]]).lower()
-                if a in b:
-                    matches.append(candidates[i])
-        if len(matches)==0:
-            matches = []
-        return matches
-
-
     @staticmethod
     def preprocess(text):
         """Optioanl: Do any general-purpose pre-processing before extracting information
