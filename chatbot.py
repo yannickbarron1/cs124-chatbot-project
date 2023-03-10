@@ -88,12 +88,20 @@ class Chatbot:
                 sent_value = -1
             token_sentiment[split[0]] = sent_value
         self.token_sentiment = token_sentiment
-        # rachel - create negation regexes in lower cases
+        # rachel - create regexes for extract sentiment
         self.neg_words_regex = r"\b[a-zA-Z]*(?:not|never|no|n't|ain't)\s+\b\w+\b"
-        self.punc_trans_regex = r"(?:and|but|\.|,|;|:|\!|\?|\s)"
+        self.punc_trans_regex = r"(?:and|but|because|since|in that|however|although|yet|despite|in spite of|even though|though|on the other hand|then again|nevertheless|nonetheless|instead|otherwise|notwithstanding|even so|\.|,|;|:|\!|\?)"
         self.special_tokens = {
-            r"enjoy(?:ed|s)?": "enjoy"
+            r"enjoy(?:ed|s)?": "enjoy",
+            r"fanc(?:ies|ied)": "fancy"
         }
+        self.strong_tokens = ["really", "extremely", "very", "much", 
+                              "highly", "entirely", "exceptionally", r"extraordinar(?:y|ily)", 
+                              r"total(ly)?", r"absolute(ly)?", "quite", r"definite(ly)?", 
+                              "undoubtedly", "strongly", "at all"]
+        # rachel - list of words that indicate a turn in a sentence
+        self.turn_tokens = ['but', 'however', 'nevertheless', 'nonetheless']
+                        
 
         # Binarize the movie ratings before storing the binarized matrix.
         self.ratings = Chatbot.binarize(ratings)
@@ -430,7 +438,7 @@ class Chatbot:
         matches = re.findall(self.neg_words_regex + r"(?:(?!_)\W*\b\w+\b)*?", text)
         neg_words_dict = {}
         for match in matches:
-            substring = re.findall(match + r"\s(.*?)" + self.punc_trans_regex, text)
+            substring = re.findall(match + r"\s?(.*?)(?=" + self.punc_trans_regex + "|$)", text)
             if substring:
                 negated_words = match + ' ' + ' '.join(re.findall(r"\b\w+\b", substring[0]))
                 neg_words_dict[match] = negated_words
@@ -442,16 +450,20 @@ class Chatbot:
 
         You should return -1 if the sentiment of the text is negative, 
         0 if the sentiment of the text is neutral (no sentiment detected), 
-        or +1 if the sentiment of the text is positive. - done
+        or +1 if the sentiment of the text is positive. ---
 
-        Use the sentiment lexicon to process the sentiment. - done
+        Use the sentiment lexicon to process the sentiment. ---
 
-        Negative handling?? (see Ed post) - done; helper function above
+        Negative handling?? (see Ed post) ---
 
         Edge cases:
-        1. neutral sentiment - done
-        2. when movie titles contain sentiment "I hate Love Affair" - done; ignores movie titles
-        3. when one clause is more important than the other (esp. "but") - not sure???
+        1. neutral sentiment --- 
+        2. when movie titles contain sentiment "I hate Love Affair" ---
+        3. when one clause is more important than the other - not sure???
+        4. need to account for lack of ending punctuation ---
+        5. when two occurrences of the same description is present
+        6. rest of the the list of special tokens to be added 
+        7. when a negation word finds another negation word
         """
         final_score = 0
         # get rid of movie titles in the input
@@ -464,7 +476,6 @@ class Chatbot:
         # go through all negation sequences by looking at the starting negation word
         for sequence in neg_seq:
             sequence_tokens = sequence.split()
-
             # go through each token after the 0 index, check their sentiment, and record to results
             for token in sequence_tokens[1:]:
                 for pattern, replacement in self.special_tokens.items():
@@ -476,13 +487,13 @@ class Chatbot:
                 # update score if there is sentiment (mind that this is negative sentiment)
                 if stemmed_token in self.token_sentiment:
                     final_score -= int(self.token_sentiment[stemmed_token])
-
         # delete negation sequences from original input
         for sequence in neg_seq:
+            if sequence.endswith(' '):
+                sequence = sequence.rstrip()
             input = input.replace(sequence, "")
         # go through the rest of the input and update sentiment score
         remaining_tokens = input.split()
-
         for token in remaining_tokens:
             for pattern, replacement in self.special_tokens.items():
                     if re.search(pattern, token):
@@ -492,8 +503,7 @@ class Chatbot:
                         stemmed_token = self.stemmer.stem(token)
             # update score if there is sentiment
             if stemmed_token in self.token_sentiment:
-                final_score += int(self.token_sentiment[stemmed_token])
-                
+                final_score += int(self.token_sentiment[stemmed_token])  
         # return the sentiment
         if final_score >= 1:
             return 1
@@ -508,7 +518,8 @@ class Chatbot:
         text is super negative and +2 if the sentiment of the text is super
         positive.
 
-        really = realli
+        implementations: 
+        - strong words
         """
         preprocessed_input = preprocessed_input.lower()
         self.neg_words_regex
@@ -542,6 +553,8 @@ class Chatbot:
         sentiments toward the movies may be different.
 
         You should use the same sentiment values as extract_sentiment, described
+
+        Do not have to worry about missing quotation marks or incorrect capitalization
 
         above.
         Hint: feel free to call previously defined functions to implement this.
