@@ -27,7 +27,6 @@ class Chatbot:
         self.titles, ratings = util.load_ratings('data/ratings.txt')
         self.sentiment = util.load_sentiment_dictionary('data/sentiment.txt')
 
-
         # sang - read movies.txt
         with open('data/movies.txt') as f:
             lines = f.readlines()
@@ -90,21 +89,13 @@ class Chatbot:
         self.token_sentiment = token_sentiment
         # rachel - create negation regexes in lower cases
         self.neg_words_regex = r"\b[a-zA-Z]*(?:not|never|no|n't|ain't)\s+\b\w+\b"
-        self.punc_trans_regex = r"(?:and|but|\.|,|;|:|\!|\?)"
+        self.punc_trans_regex = r"(?:and|but|\.|,|;|:|\!|\?|\s)"
         self.special_tokens = {
             r"enjoy(?:ed|s)?": "enjoy"
         }
 
-
-        ########################################################################
-        # TODO: Binarize the movie ratings matrix.                             #
-        ########################################################################
-
         # Binarize the movie ratings before storing the binarized matrix.
         self.ratings = Chatbot.binarize(ratings)
-        ########################################################################
-        #                             END OF YOUR CODE                         #
-        ########################################################################
 
     ############################################################################
     # 1. WARM UP REPL                                                          #
@@ -112,30 +103,14 @@ class Chatbot:
 
     def greeting(self):
         """Return a message that the chatbot uses to greet the user."""
-        ########################################################################
-        # TODO: Write a short greeting message                                 #
-        ########################################################################
-
-        greeting_message = "Nice to meet you!"
-
-        ########################################################################
-        #                             END OF YOUR CODE                         #
-        ########################################################################
+        greeting_message = "Nice to meet you! I'm a movie recommender. How can I help today?"
         return greeting_message
 
     def goodbye(self):
         """
         Return a message that the chatbot uses to bid farewell to the user.
         """
-        ########################################################################
-        # TODO: Write a short farewell message                                 #
-        ########################################################################
-
-        goodbye_message = "Have a wonderful day!"
-
-        ########################################################################
-        #                          END OF YOUR CODE                            #
-        ########################################################################
+        goodbye_message = "Thank you for having me with you! Have a wonderful day."
         return goodbye_message
 
     ############################################################################
@@ -198,13 +173,13 @@ class Chatbot:
         return text
 
 
-
     def extract_titles_starter(self, text):
         # sang - basic title extraction function for starter mode
         # input is a string, output is a list of strings
         titles = re.findall(r'"(.*?)"', text)
         return titles
             
+
     def create_phrases(self, text):
         # sang - this function creates all possible phrases from the input/title so that they can be compared to each other
         # intput is a string, output is two lists, whose elements are strings
@@ -231,6 +206,7 @@ class Chatbot:
                 phrases2.append(phrase)
         return phrases1, phrases2
     
+
     def compare_input_to_movies(self, text):
         # sang - this function finds best-matching movies based on input
         # intput is a string, output is a list of lists whose format is
@@ -266,6 +242,7 @@ class Chatbot:
                     best_matches.append(matches[i])
         
         return best_matches
+
 
     def extract_titles_creative(self, text):
         # sang - this function finds the part in the input that seems most likely to be a movie title
@@ -320,6 +297,7 @@ class Chatbot:
         elif self.creative:
             titles = self.extract_titles_creative(text)
         return titles
+
 
     def find_movies_by_title_starter(self, title):
         """ Given a movie title, return a list of indices of matching movies.
@@ -701,20 +679,10 @@ class Chatbot:
 
         :returns: a binarized version of the movie-rating matrix
         """
-        ########################################################################
-        # TODO: Binarize the supplied ratings matrix.                          #
-        #                                                                      #
-        # WARNING: Do not use self.ratings directly in this function.          #
-        ########################################################################
-
         # tmp has binarized values, but 0's are also incorrectly set to -1.
         # This is fixed in the second np.where statement
         tmp = np.where(ratings > threshold, 1, -1)
         binarized_ratings = np.where(ratings != 0, tmp, 0)
-
-        ########################################################################
-        #                        END OF YOUR CODE                              #
-        ########################################################################
         return binarized_ratings
 
     def similarity(self, u, v):
@@ -727,9 +695,6 @@ class Chatbot:
 
         :returns: the cosine similarity between the two vectors
         """
-        ########################################################################
-        # TODO: Compute cosine similarity between the two vectors.             #
-        ########################################################################
         uDotV = np.dot(u, v)
         normu = np.linalg.norm(u)
         normv = np.linalg.norm(v)
@@ -737,9 +702,6 @@ class Chatbot:
         if norm_prod == 0:  #avoids division by 0
             return 0        #sets similarity to 0 indicating that the movies were not rated by any of the same people
         similarity = uDotV/(norm_prod)
-        ########################################################################
-        #                          END OF YOUR CODE                            #
-        ########################################################################
         return similarity
     
     # builds similarity vector using the current movie as the reference
@@ -769,20 +731,6 @@ class Chatbot:
         :returns: a list of k movie indices corresponding to movies in
         ratings_matrix, in descending order of recommendation.
         """
-
-        ########################################################################
-        # TODO: Implement a recommendation function that takes a vector        #
-        # user_ratings and matrix ratings_matrix and outputs a list of movies  #
-        # recommended by the chatbot.                                          #
-        #                                                                      #
-        # WARNING: Do not use the self.ratings matrix directly in this         #
-        # function.                                                            #
-        #                                                                      #
-        # For starter mode, you should use item-item collaborative filtering   #
-        # with cosine similarity, no mean-centering, and no normalization of   #
-        # scores.                                                              #
-        ########################################################################
-
         #Populate this list with k movie indices to recommend to the user.
         idxes = np.nonzero(user_ratings)
         rated = ratings_matrix[idxes]
@@ -790,9 +738,6 @@ class Chatbot:
         weighted = np.dot(user_ratings[idxes], similarities)
         weighted[idxes] = -1000000  #hardcoded but it forces all movies that were already rated to show up at the beginning of the vector
         recommendations = list(np.argsort(weighted)[-1: -k - 1: -1])
-        ########################################################################
-        #                        END OF YOUR CODE                              #
-        ########################################################################
         return recommendations
 
     ############################################################################
@@ -813,17 +758,15 @@ class Chatbot:
     # 5. Write a description for your chatbot here!                            #
     ############################################################################
     def intro(self):
-        """Return a string to use as your chatbot's description for the user.
-
-        Consider adding to this description any information about what your
-        chatbot can do and how the user can interact with it.
-        """
         return """
-        Your task is to implement the chatbot as detailed in the PA7
-        instructions.
-        Remember: in the starter mode, movie names will come in quotation marks
-        and expressions of sentiment will be simple!
-        TODO: Write here the description for your own chatbot!
+        The movie recommender is a chatbot that recommends movie titles to the user based
+        on user's profile. In the basic mode, the chatbot requires 5 datapoints of input from
+        the user to decide what movie to recommend to the user. The inputs from the user are
+        generally strict, such as movies having to be quoted in quotation marks, as well as 
+        the required simplicity of the sentence. In the creative mode, the chatbot is able 
+        to perform more nuanced lingusitic tasks and allows for more verbal freedom from the
+        user. The chatbot is a first attempt to mimick human capacity of natural language 
+        processing and understanding.
         """
 
 
