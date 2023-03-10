@@ -27,10 +27,6 @@ class Chatbot:
         self.titles, ratings = util.load_ratings('data/ratings.txt')
         self.sentiment = util.load_sentiment_dictionary('data/sentiment.txt')
 
-        # yannick - keep track of user ratings and number of recommendations given
-        self.user_ratings = np.array([0]*len(self.titles))
-        self.sentiment_counter = 0
-
         # sang - read movies.txt
         with open('data/movies.txt', encoding="utf8") as f:
             lines = f.readlines()
@@ -103,6 +99,10 @@ class Chatbot:
         self.spellcheck = []
         self.multiple_movies_found = []
         self.saved_line = ''
+        # yannick - keep track of user ratings and number of recommendations given
+        self.user_ratings = np.array([0]*len(self.titles))
+        self.sentiment_counter = 0
+        self.recommendation_idx = 0
         ########################################################################
         # TODO: Binarize the movie ratings matrix.                             #
         ########################################################################
@@ -354,19 +354,40 @@ class Chatbot:
                                 elif extracted_sentiment == -1:
                                     print("So you didn't enjoy \"{}\".".format(valid_title))
                                 self.recommended_movies = self.recommend(self.user_ratings, self.ratings)
-                                self.just_recommended = self.recommended_movies[0]
-                                response = "I think you'll like \"{}\". Do you want another recommendation? (yes/no)".format(self.string_title[self.just_recommended])
+                                first_recommendation = self.recommended_movies[0]
+                                response = "I think you'll like \"{}\". Do you want another recommendation? (yes/no)".format(self.titles[first_recommendation])
+                                self.recommendation_idx += 1
+                                # self.just_recommended = self.recommended_movies[0]
+                                # response = "I think you'll like \"{}\". Do you want another recommendation? (yes/no)".format(self.string_title[self.just_recommended])
+                                
                                 
             elif self.sentiment_counter==5:
-                if line == 'yes' and self.just_recommended != self.recommended_movies[-1]:
-                    for i in range(len(self.recommended_movies)-1):
-                        if self.just_recommended == self.recommended_movies[i]:
-                            self.just_recommended = self.recommended_movies[i+1]
-                            if i<len(self.recommended_movies)-2:
-                                response = "I think you'll also like \"{}\". Do you want another recommendation? (yes/no)".format(self.string_title[self.just_recommended])
-                            elif i == len(self.recommended_movies)-2:
-                                response = "I think you'll also like \"{}\". This is my final recommendation. If you want more, please tell me about other movies you liked or didn't like!".format(self.string_title[self.just_recommended])
-                                self.sentiment_counter = 0
+                if line == 'yes': #and self.just_recommended != self.recommended_movies[-1]:
+                    curr_recommendation = self.recommended_movies[self.recommendation_idx]
+                    if self.recommendation_idx == len(self.recommended_movies) - 1:
+                        response = "I think you'll also like \"{}\". This is my final recommendation. If you want more, please tell me about other movies you liked or didn't like!".format(self.titles[curr_recommendation])
+                        self.sentiment_counter = 0
+                        self.recommendation_idx = 0
+                        self.user_ratings = [0]*len(self.titles) #very inefficient; allocates space and sets every idx to zero every time we finish recommending. As long as the instance is active, there will be space allocated for the array, we only need to keep track of the idxes for movies the user has rated. We only need to build the array before calling recommend. Doesn't really matter for the project.
+                    else:
+                        response = "I think you'll also like \"{}\". Do you want another recommendation? (yes/no)".format(self.titles[curr_recommendation])
+                        self.recommendation_idx += 1
+                        
+                    ###########################
+                    #Buggy
+                    #After the first "yes", the for loop runs to completion. It replaces the response each iteration and, because it loops 
+                    #through the entire array, response is set to contain the last title in the array. So, after one "yes", we print out 
+                    #the statement saying that this is the fina; recommendation and we give the user the title of the final recommendation. I 
+                    #don't think we need a for loop, just something to keep track of where we are in the recommendations array.
+                    ###########################
+                    # for i in range(len(self.recommended_movies)-1):
+                    #     if self.just_recommended == self.recommended_movies[i]:
+                    #         self.just_recommended = self.recommended_movies[i+1]
+                    #         if i<len(self.recommended_movies)-2:
+                    #             response = "I think you'll also like \"{}\". Do you want another recommendation? (yes/no)".format(self.string_title[self.just_recommended])
+                    #         elif i == len(self.recommended_movies)-2:
+                    #             response = "I think you'll also like \"{}\". This is my final recommendation. If you want more, please tell me about other movies you liked or didn't like!".format(self.string_title[self.just_recommended])
+                    #             self.sentiment_counter = 0
                 elif line == 'no':
                     response = 'Thank you for talking to me today. Have a wonderful day!'
                     self.sentiment_counter = 0
