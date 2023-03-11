@@ -733,7 +733,6 @@ class Chatbot:
         1. strong_neg > strong_pos, return -2 --- 
         2. strong_pos > strong_neg, return 2 --- 
         3. strong_neg = strong_pos, return 0 --- 
-        2. if final score contradicts strong_pos/strong_neg (either 2 or -2), look at final score. if >= 3, revert decision
         """
         # initialization
         final_score = 0
@@ -814,7 +813,6 @@ class Chatbot:
             result = 2
         elif strong_pos == strong_neg:
             result = 0
-
         # compare final score and strong_neutral
         # "really good / really bad"
         if strong_pos == strong_neg == 0 and strong_neutral == True:
@@ -834,24 +832,7 @@ class Chatbot:
                 return -1
         # when there are strong words present
         elif strong_pos != 0 and strong_neg != 0:
-            # when final score is needed for consideration
-            if final_score >= 3 or final_score <= -3 and result != 0:
-                # final score pos, result neg OR final score neg, result pos, revert
-                if (final_score > 0 and result == -2) or (final_score < 0 and result == 2):
-                    result *= -1
-                    return result
-                # final score pos and result pos OR final score neg and result neg
-                else:
-                    return result
-            # "it was terrible and great and good happy cheerful"
-            elif final_score >= 3 or final_score <= -3 and result == 0:
-                if final_score >= 3:
-                    return 2
-                elif final_score <= 3:
-                    return -2
-            # "it was terrible / great"
-            else:
-                return result
+            return result
 
     def extract_sentiment(self, preprocessed_input):
         """rachel - this function combines the two functions
