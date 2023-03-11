@@ -95,10 +95,19 @@ class Chatbot:
             r"enjoy(?:ed|s)?": "enjoy",
             r"fanc(?:ies|ied)": "fancy"
         }
-        self.strong_tokens = ["really", "extremely", "very", "much", 
-                              "highly", "entirely", "exceptionally", r"extraordinar(?:y|ily)", 
-                              r"total(ly)?", r"absolute(ly)?", "quite", r"definite(ly)?", 
-                              "undoubtedly", "strongly", "at all"]
+        self.strong_pos_tokens = [r"re+a+lly+", r"extre+mely+", r"ve+r+y+", r"lo+ved+?",
+                              r"hi+ghly+", "entirely", "exceptionally", r"extraordinar(?:y|ily)", 
+                              r"total(ly+)?", r"absolu+te(ly+)?", "quite", r"definite(ly)?", 
+                              "undoubtedly", r"strong+(ly+)?", r"!+", r"lo+t", r"gre+a+t"]
+        self.strong_neg_tokens = [r"\bn(ever|ot)\b", r"\bwors[et]?[s]?\b", r"\b(?:awful|terrible|dreadful|horrible|abominable)\b",
+                                r"\b(?:suck[s]?|sucks|sucky|nasty|shitty|crappy|atrocious|rotten|lousy)\b",
+                                r"\b(?:disgusting|repulsive|revolting|vile|foul|offensive|grotesque)\b",
+                                r"\b(?:hate[s]?|hated|hateful|detestable|loathsome|odious)\b",
+                                r"\b(?:abhor[s]?|abhorred|abhorrent)\b",
+                                r"\b(?:horrendous|appalling|deplorable|execrable|ghastly)\b",
+                                r"\b(?:repugnant|hideous|unspeakable|unbearable|unacceptable)\b",
+                                r"\b(?:insufferable|obnoxious|invidious|repellant)\b",
+                                "at all"]
         # rachel - list of words that indicate a turn in a sentence
         self.turn_tokens = ['but', 'however', 'nevertheless', 'nonetheless']
                         
@@ -699,10 +708,52 @@ class Chatbot:
         implementations: 
         - strong words
         """
-        preprocessed_input = preprocessed_input.lower()
-        self.neg_words_regex
-        self.neg_verbs_regex
-        pass
+        final_score = 0
+        # get rid of movie titles in the input
+        titles = self.extract_titles(preprocessed_input)
+        for title in titles:
+            preprocessed_input = preprocessed_input.replace(title, "")
+        input = preprocessed_input.lower()
+        # acquire a list of negation sequences, each starting with one negation word
+        neg_seq = self.negation_handling(input)
+        # go through all negation sequences by looking at the starting negation word
+        for sequence in neg_seq:
+            sequence_tokens = sequence.split()
+            # go through each token after the 0 index, check their sentiment, and record to results
+            for token in sequence_tokens[1:]:
+                for pattern, replacement in self.special_tokens.items():
+                    if re.search(pattern, token):
+                        stemmed_token = replacement
+                        break
+                    else:
+                        stemmed_token = self.stemmer.stem(token)
+                # update score if there is sentiment (mind that this is negative sentiment)
+                if stemmed_token in self.token_sentiment:
+                    final_score -= int(self.token_sentiment[stemmed_token])
+        # delete negation sequences from original input
+        for sequence in neg_seq:
+            if sequence.endswith(' '):
+                sequence = sequence.rstrip()
+            input = input.replace(sequence, "")
+        # go through the rest of the input and update sentiment score
+        remaining_tokens = input.split()
+        for token in remaining_tokens:
+            for pattern, replacement in self.special_tokens.items():
+                    if re.search(pattern, token):
+                        stemmed_token = replacement
+                        break
+                    else:
+                        stemmed_token = self.stemmer.stem(token)
+            # update score if there is sentiment
+            if stemmed_token in self.token_sentiment:
+                final_score += int(self.token_sentiment[stemmed_token])  
+        # return the sentiment
+        if final_score >= 1:
+            return 1
+        elif final_score == 0:
+            return 0
+        else:
+            return -1
     
 
     def extract_sentiment(self, preprocessed_input):
@@ -748,7 +799,7 @@ class Chatbot:
         :returns: a list of tuples, where the first item in the tuple is a movie
         title, and the second is the sentiment in the text toward that movie
         """
-        pass
+        
 
     def get_minimum_edit_distance(self, str1, str2, max_distance):
         """Maeghan: calculates minimum edit distance between two words. """
