@@ -233,6 +233,45 @@ class Chatbot:
                                   "Please just say yes or no"]
         return possible_responses[random.randint(0, num_responses - 1)]
         
+    def handle_sentiment(self, matches, valid_title, extracted_sentiment):
+        response = ""
+        if not extracted_sentiment or extracted_sentiment==0:
+            response = self.generate_response(ResponseCode.SENTIMENT_NEUTRAL, valid_title)
+        else:
+            self.user_ratings[matches[0]] = extracted_sentiment
+            self.sentiment_counter += 1
+            if self.sentiment_counter < 5:
+                if extracted_sentiment >0:
+                    response = self.generate_response(ResponseCode.SENTIMENT_POSITIVE, valid_title)
+                elif extracted_sentiment <0:
+                    response = self.generate_response(ResponseCode.SENTIMENT_NEGATIVE, valid_title)
+            elif self.sentiment_counter == 5:
+                self.recommended_movies = self.recommend(self.user_ratings, self.ratings)
+                self.just_recommended = self.recommended_movies[0]
+                response = "Ok, I have enough information. " + self.generate_response(ResponseCode.GIVE_RECOMMENDATION, self.string_title[self.just_recommended])
+                self.recommendation_idx += 1
+        return response
+    
+    def offer_recommendations(self, line):
+        response = ""
+        if line == 'yes':
+            self.just_recommended = self.recommended_movies[self.recommendation_idx]
+            if self.recommendation_idx == len(self.recommended_movies) - 1:
+                response = self.generate_response(ResponseCode.GIVE_FINAL_RECOMMENDATION, self.string_title[self.just_recommended])
+                self.sentiment_counter = 0
+                self.recommendation_idx = 0
+                self.user_ratings = [0]*len(self.titles) #very inefficient, but doesn't affect output;
+            else:
+                response = self.generate_response(ResponseCode.GIVE_RECOMMENDATION, self.string_title[self.just_recommended])
+                self.recommendation_idx += 1
+        elif line == 'no':
+            response = self.generate_response(ResponseCode.NO_FURTHER_RECOMMENDATIONS)
+            self.sentiment_counter = 0
+            self.user_ratings = [0]*len(self.titles)
+            self.recommendation_idx = 0
+        else:
+            response = self.generate_response(ResponseCode.YES_NO_ABSENT)
+        return response
 
     def process(self, line):
         """Process a line of input from the REPL and generate a response.
@@ -268,9 +307,9 @@ class Chatbot:
             if self.sentiment_counter<5 and self.spellcheck==[] and self.multiple_movies_found==[]:
                 extracted_titles = self.extract_titles(line)
                 if not extracted_titles:
-                    response = "I want to hear about movies. Please tell me about a movie you've seen. Hopefully it's something I made."
+                    response = self.generate_response(ResponseCode.NO_TITLE)
                 elif len(extracted_titles) > 1:
-                    response = "Please tell me about one movie at a time. Go ahead."
+                    response = self.generate_response(ResponseCode.TOO_MANY_TITLES)
                 else:
                     valid_title = extracted_titles[0]
                     matches = self.find_movies_by_title(valid_title)
@@ -280,10 +319,12 @@ class Chatbot:
                             response = "Are you sure you entered the correct title? Please rewrite what you said with the correct title."
                         else:
                             print("I don't think there's a movie titled \"{}\".".format(valid_title))
-                            response = 'Did you mean \"{}\"? (yes/no)'.format(self.list_title[self.spellcheck[0]][0])
+                            response = self.generate_response(ResponseCode.NO_MATCHES, valid_title)
+                            response += ' Did you mean \"{}\"? (yes/no)'.format(self.list_title[self.spellcheck[0]][0])
                             self.saved_line = line
                     elif len(matches) > 1:
-                        response = "There are multiple movies titled \"{}\". Which one of these did you mean?".format(valid_title)
+                        response = self.generate_response(ResponseCode.MULTIPLE_MATCHES, valid_title)
+                        response += " Which one of these did you mean?"
                         self.multiple_movies_found = matches
                         self.saved_line = line
                         for i in matches:
@@ -291,25 +332,7 @@ class Chatbot:
                     else:
                         extracted_sentiment = self.extract_sentiment_starter(line)
                         ## need to change to extract_sentiment when creative part is done #################################################
-                        if not extracted_sentiment or extracted_sentiment==0:
-                            response = "I'm sorry, I'm not sure if you liked \"{}\". Tell me more about it.".format(valid_title)
-                        else:
-                            self.user_ratings[matches[0]] = extracted_sentiment
-                            self.sentiment_counter += 1 # needs to reset after 5 valid inputs, self.user_ratings does not reset
-                            #test
-                            if self.sentiment_counter < 5:
-                                if extracted_sentiment >0:
-                                    response = "So you enjoyed \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
-                                elif extracted_sentiment <0:
-                                    response = "So you didn't enjoy \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
-                            elif self.sentiment_counter == 5:
-                                if extracted_sentiment >0:
-                                    print("So you enjoyed \"{}\".".format(valid_title))
-                                elif extracted_sentiment <0:
-                                    print("So you didn't enjoy \"{}\".".format(valid_title))
-                                self.recommended_movies = self.recommend(self.user_ratings, self.ratings)
-                                self.just_recommended = self.recommended_movies[0]
-                                response = "I think you'll like \"{}\". Do you want another recommendation? (yes/no)".format(self.string_title[self.just_recommended])
+                        response = self.handle_sentiment(matches, valid_title, extracted_sentiment)
             
             # this subsection takes care of typos, mostly copied from main subsection
             elif self.sentiment_counter<5 and self.spellcheck!=[]:
@@ -330,26 +353,7 @@ class Chatbot:
                     else:
                         extracted_sentiment = self.extract_sentiment_starter(self.saved_line)
                         ## need to change to extract_sentiment when creative part is done #################################################
-                        if not extracted_sentiment or extracted_sentiment==0:
-                            response = "I'm sorry, I'm not sure if you liked \"{}\". Tell me more about it.".format(valid_title)
-                        else:
-                            self.user_ratings[matches[0]] = extracted_sentiment
-                            self.sentiment_counter += 1 # needs to reset after 5 valid inputs, self.user_ratings does not reset
-                            #test
-                            if self.sentiment_counter < 5:
-                                if extracted_sentiment >0:
-                                    response = "So you enjoyed \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
-                                elif extracted_sentiment <0:
-                                    response = "So you didn't enjoy \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
-                            elif self.sentiment_counter == 5:
-                                if extracted_sentiment >0:
-                                    print("So you enjoyed \"{}\".".format(valid_title))
-                                elif extracted_sentiment <0:
-                                    print("So you didn't enjoy \"{}\".".format(valid_title))
-                                self.recommended_movies = self.recommend(self.user_ratings, self.ratings)
-                                self.just_recommended = self.recommended_movies[0]
-                                response = "I think you'll like \"{}\". Do you want another recommendation? (yes/no)".format(self.string_title[self.just_recommended])
-            
+                        response = self.handle_sentiment(matches, valid_title, extracted_sentiment)
                 else:
                     response = "I'm so sorry but I don't understand what you're trying to say. Please tell me if I have the right title by saying either yes or no."
 
@@ -364,42 +368,10 @@ class Chatbot:
                     print("So you meant \"{}\".".format(valid_title))
                     extracted_sentiment = self.extract_sentiment_starter(self.saved_line)
                     ## need to change to extract_sentiment when creative part is done #################################################
-                    if not extracted_sentiment or extracted_sentiment==0:
-                        response = "I'm sorry, I'm not sure if you liked \"{}\". Tell me more about it.".format(valid_title)
-                    else:
-                        self.user_ratings[matches[0]] = extracted_sentiment
-                        self.sentiment_counter += 1 # needs to reset after 5 valid inputs, self.user_ratings does not reset
-                        #test
-                        if self.sentiment_counter < 5:
-                            if extracted_sentiment >0:
-                                response = "So you enjoyed \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
-                            elif extracted_sentiment <0:
-                                response = "So you didn't enjoy \"{}\". Tell me about another movie you liked or didn't like.".format(valid_title)
-                        elif self.sentiment_counter == 5:
-                            if extracted_sentiment >0:
-                                print("So you enjoyed \"{}\".".format(valid_title))
-                            elif extracted_sentiment <0:
-                                print("So you didn't enjoy \"{}\".".format(valid_title))
-                            self.recommended_movies = self.recommend(self.user_ratings, self.ratings)
-                            self.just_recommended = self.recommended_movies[0]
-                            response = "I think you'll like \"{}\". Do you want another recommendation? (yes/no)".format(self.string_title[self.just_recommended])
+                    response = self.handle_sentiment(matches, valid_title, extracted_sentiment)
         
-
             elif self.sentiment_counter==5:
-                if line == 'yes' and self.just_recommended != self.recommended_movies[-1]:
-                    for i in range(len(self.recommended_movies)-1):
-                        if self.just_recommended == self.recommended_movies[i]:
-                            self.just_recommended = self.recommended_movies[i+1]
-                            if i<len(self.recommended_movies)-2:
-                                response = "I think you'll also like \"{}\". Do you want another recommendation? (yes/no)".format(self.string_title[self.just_recommended])
-                            elif i == len(self.recommended_movies)-2:
-                                response = "I think you'll also like \"{}\". This is my final recommendation. If you want more, please tell me about other movies you liked or didn't like!".format(self.string_title[self.just_recommended])
-                                self.sentiment_counter = 0
-                elif line == 'no':
-                    response = 'Thank you for talking to me today. Have a wonderful day! If you have time, try my film "Once Upon a Time in Hollywood" with Leo DiCaprio, Brad Pitt, and Margot Robbie.'
-                    self.sentiment_counter = 0
-                else:
-                    response = "I'm so sorry but I don't understand what you're trying to say. Please tell me if you want another recommendation by saying either yes or no."
+                response = self.offer_recommendations(line)
 
 
         # this is the starter section
@@ -419,40 +391,10 @@ class Chatbot:
                         response = self.generate_response(ResponseCode.MULTIPLE_MATCHES, valid_title)
                     else:
                         extracted_sentiment = self.extract_sentiment(line)
-                        if not extracted_sentiment or extracted_sentiment==0:
-                            response = self.generate_response(ResponseCode.SENTIMENT_NEUTRAL, valid_title)
-                        else:
-                            self.user_ratings[matches[0]] = extracted_sentiment
-                            self.sentiment_counter += 1
-                            if self.sentiment_counter < 5:
-                                if extracted_sentiment >0:
-                                    response = self.generate_response(ResponseCode.SENTIMENT_POSITIVE, valid_title)
-                                elif extracted_sentiment <0:
-                                    response = self.generate_response(ResponseCode.SENTIMENT_NEGATIVE, valid_title)
-                            elif self.sentiment_counter == 5:
-                                self.recommended_movies = self.recommend(self.user_ratings, self.ratings)
-                                self.just_recommended = self.recommended_movies[0]
-                                response = "Ok, I have enough information. " + self.generate_response(ResponseCode.GIVE_RECOMMENDATION, self.string_title[self.just_recommended])
-                                self.recommendation_idx += 1
+                        response = self.handle_sentiment(matches, valid_title, extracted_sentiment)
                                 
             elif self.sentiment_counter==5:
-                if line == 'yes':
-                    self.just_recommended = self.recommended_movies[self.recommendation_idx]
-                    if self.recommendation_idx == len(self.recommended_movies) - 1:
-                        response = self.generate_response(ResponseCode.GIVE_FINAL_RECOMMENDATION, self.string_title[self.just_recommended])
-                        self.sentiment_counter = 0
-                        self.recommendation_idx = 0
-                        self.user_ratings = [0]*len(self.titles) #very inefficient, but doesn't affect output;
-                    else:
-                        response = self.generate_response(ResponseCode.GIVE_RECOMMENDATION, self.string_title[self.just_recommended])
-                        self.recommendation_idx += 1
-                elif line == 'no':
-                    response = self.generate_response(ResponseCode.NO_FURTHER_RECOMMENDATIONS)
-                    self.sentiment_counter = 0
-                    self.user_ratings = [0]*len(self.titles)
-                    self.recommendation_idx = 0
-                else:
-                    response = self.generate_response(ResponseCode.YES_NO_ABSENT)
+                response = self.offer_recommendations(line)
         ########################################################################
         #                          END OF YOUR CODE                            #
         ########################################################################
