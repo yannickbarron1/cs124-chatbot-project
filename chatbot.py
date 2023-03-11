@@ -786,7 +786,7 @@ class Chatbot:
             # Case 1: if token is a strong neg/pos word, add to strong word calc
             if token in strong_neutral_match:
                 # if "it was really good/bad", change neutral to True and check for later normal pos/neg words
-                strong_neutral = True 
+                strong_neutral = True
             elif token in strong_pos_match:
                 # if "it was great / i loved it", add to strong_pos calc
                 strong_pos += 1
@@ -853,14 +853,12 @@ class Chatbot:
             score = self.extract_sentiment_creative(preprocessed_input)
         return score
 
-
     def extract_sentiment_for_movies(self, preprocessed_input):
         """rachel - Creative Feature: Extracts the sentiments from a line of
         pre-processed text that may contain multiple movies. Note that the
         sentiments toward the movies may be different.
 
         You should use the same sentiment values as extract_sentiment, described
-
         above.
         Hint: feel free to call previously defined functions to implement this.
 
@@ -870,12 +868,48 @@ class Chatbot:
                            'I liked both "Titanic (1997)" and "Ex Machina".'))
           print(sentiments) // prints [("Titanic (1997)", 1), ("Ex Machina", 1)]
 
+        situations:
+        1. I liked both "I, Robot" and "Ex Machina".
+            connected by "and", same sentiment
+        2. I didn't like either "I, Robot" or "Ex Machina".
+            connected by "or"/"nor", same sentiment
+        3. I liked "Titanic (1997)", but "Ex Machina" was not good.
+            has a comma in between and/or but, different sentiment
+
         :param preprocessed_input: a user-supplied line of text that has been
         pre-processed with preprocess()
         :returns: a list of tuples, where the first item in the tuple is a movie
         title, and the second is the sentiment in the text toward that movie
         """
-        pass
+        input = preprocessed_input.lower()
+        sentiments = []
+        punctuation = ["but", "however", "nevertheless", "yet", "although", "though", "even though", "nonetheless", ".", ";", "?", "!", "-"]
+        sim_connective = ["and", "or", "nor", ","]
+
+        # iterate through the entire input until the input is empty
+        while input != "":
+            # If the input contains "and", "or", "nor", the titles are of the same sentiment
+            if any(conj in input for conj in sim_connective):
+                # determine where to end this current sequence
+                segment_tokens = []
+                input_tokens = input.split()
+                for token in input_tokens:
+                    if token in punctuation:
+                        break
+                    else:
+                        segment_tokens.append(token)
+                segment_keep = ' '.join(segment_tokens)
+                # store every title in this segment with the same sentiment
+                sentiment = self.extract_sentiment(segment_keep)
+                titles = self.extract_titles(segment_keep)
+                if titles:
+                    for title in titles:
+                        sentiments.append((title, sentiment))
+                # delete segment from input as well as any connectives/punc at the beginning for a new, clean input
+                input = input[len(segment_keep):].lstrip("".join(punctuation + sim_connective)).strip()
+
+        return sentiments
+        
 
     def get_minimum_edit_distance(self, str1, str2, max_distance):
         """Maeghan: calculates minimum edit distance between two words. """
