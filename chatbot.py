@@ -260,14 +260,14 @@ class Chatbot:
                 response = self.generate_response(ResponseCode.GIVE_FINAL_RECOMMENDATION, self.string_title[self.just_recommended])
                 self.sentiment_counter = 0
                 self.recommendation_idx = 0
-                self.user_ratings = [0]*len(self.titles) #very inefficient, but doesn't affect output;
+                self.user_ratings = np.array([0]*len(self.titles)) #very inefficient, but doesn't affect output;
             else:
                 response = self.generate_response(ResponseCode.GIVE_RECOMMENDATION, self.string_title[self.just_recommended])
                 self.recommendation_idx += 1
         elif line == 'no':
             response = self.generate_response(ResponseCode.NO_FURTHER_RECOMMENDATIONS)
             self.sentiment_counter = 0
-            self.user_ratings = [0]*len(self.titles)
+            self.user_ratings = np.array([0]*len(self.titles))
             self.recommendation_idx = 0
         else:
             response = self.generate_response(ResponseCode.YES_NO_ABSENT)
