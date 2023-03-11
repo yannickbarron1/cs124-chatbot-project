@@ -881,7 +881,7 @@ class Chatbot:
         :returns: a list of tuples, where the first item in the tuple is a movie
         title, and the second is the sentiment in the text toward that movie
         """
-        input = preprocessed_input.lower()
+        input = preprocessed_input
         sentiments = []
         punctuation = ["but", "however", "nevertheless", "yet", "although", "though", "even though", "nonetheless", ".", ";", "?", "!", "-"]
         sim_connective = ["and", "or", "nor", ","]
@@ -889,12 +889,12 @@ class Chatbot:
         # iterate through the entire input until the input is empty
         while input != "":
             # If the input contains "and", "or", "nor", the titles are of the same sentiment
-            if any(conj in input for conj in sim_connective):
+            if any(conj in input for conj in [c.lower() for c in sim_connective]):
                 # determine where to end this current sequence
                 segment_tokens = []
                 input_tokens = input.split()
                 for token in input_tokens:
-                    if token in punctuation:
+                    if token.lower() in [c.lower() for c in punctuation]:
                         break
                     else:
                         segment_tokens.append(token)
@@ -904,7 +904,9 @@ class Chatbot:
                 titles = self.extract_titles(segment_keep)
                 if titles:
                     for title in titles:
-                        sentiments.append((title, sentiment))
+                        # add the title with the original capitalization
+                        title_case = preprocessed_input[preprocessed_input.lower().index(title.lower()):][:len(title)]
+                        sentiments.append((title_case, sentiment))
                 # delete segment from input as well as any connectives/punc at the beginning for a new, clean input
                 input = input[len(segment_keep):].lstrip("".join(punctuation + sim_connective)).strip()
 
