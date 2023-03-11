@@ -108,10 +108,11 @@ class Chatbot:
             r"enjoy(?:ed|s)?": "enjoy",
             r"fanc(?:ies|ied)": "fancy"
         }
-        self.strong_pos_tokens = [r"re+a+lly+", r"extre+mely+", r"ve+r+y+", r"lo+ved+?",
-                              r"hi+ghly+", "entirely", "exceptionally", r"extraordinar(?:y|ily)", 
+        self.strong_neutral_tokens = [r"re+a+lly+", r"extre+mely+", r"ve+r+y+",
+                              r"hi+ghly+", "entirely", "exceptionally", "extraordinarily", 
                               r"total(ly+)?", r"absolu+te(ly+)?", "quite", r"definite(ly)?", 
-                              "undoubtedly", r"strong+(ly+)?", r"!+", r"lo+t", r"gre+a+t"]
+                              "undoubtedly", r"strong+(ly+)?", r"!+", r"lo+t"]
+        self.strong_pos_tokens = [r"lo+ved+?", r"gre+a+t", r"exce+ptional", r"extraordinary+"]
         self.strong_neg_tokens = [r"\bn(ever|ot)\b", r"\bwors[et]?[s]?\b", r"\b(?:awful|terrible|dreadful|horrible|abominable)\b",
                                 r"\b(?:suck[s]?|sucks|sucky|nasty|shitty|crappy|atrocious|rotten|lousy)\b",
                                 r"\b(?:disgusting|repulsive|revolting|vile|foul|offensive|grotesque)\b",
@@ -121,8 +122,6 @@ class Chatbot:
                                 r"\b(?:repugnant|hideous|unspeakable|unbearable|unacceptable)\b",
                                 r"\b(?:insufferable|obnoxious|invidious|repellant)\b",
                                 "at all"]
-        # rachel - list of words that indicate a turn in a sentence
-        self.turn_tokens = ['but', 'however', 'nevertheless', 'nonetheless']
                         
 
         self.recommended_movies = []
@@ -730,10 +729,21 @@ class Chatbot:
         text is super negative and +2 if the sentiment of the text is super
         positive.
 
-        implementations: 
-        - strong words
+        comparisons:
+        1. strong_neg > strong_pos, return -2 --- 
+        2. strong_pos > strong_neg, return 2 --- 
+        3. strong_neg = strong_pos, return 0 --- 
+        2. if final score contradicts strong_pos/strong_neg (either 2 or -2), look at final score. if >= 3, revert decision
         """
+        # initialization
         final_score = 0
+        strong_neutral = False
+        strong_pos = 0
+        strong_neg = 0
+        strong_neutral_regex = r"(" + "|".join(self.strong_neutral_tokens) + r")"
+        strong_pos_regex = r"(" + "|".join(self.strong_pos_tokens) + r")"
+        strong_neg_regex = r"(" + "|".join(self.strong_neg_tokens) + r")"
+
         # get rid of movie titles in the input
         titles = self.extract_titles(preprocessed_input)
         for title in titles:
@@ -741,45 +751,107 @@ class Chatbot:
         input = preprocessed_input.lower()
         # acquire a list of negation sequences, each starting with one negation word
         neg_seq = self.negation_handling(input)
+        # acquire three lists of strong word matches in the input
+        strong_neutral_match = [x[0] for x in re.findall(strong_neutral_regex, input)]
+        strong_pos_match = [x[0] for x in re.findall(strong_pos_regex, input)]
+        strong_neg_match = [x[0] for x in re.findall(strong_neg_regex, input)]
+
         # go through all negation sequences by looking at the starting negation word
         for sequence in neg_seq:
             sequence_tokens = sequence.split()
             # go through each token after the 0 index, check their sentiment, and record to results
             for token in sequence_tokens[1:]:
-                for pattern, replacement in self.special_tokens.items():
-                    if re.search(pattern, token):
-                        stemmed_token = replacement
-                        break
-                    else:
-                        stemmed_token = self.stemmer.stem(token)
-                # update score if there is sentiment (mind that this is negative sentiment)
-                if stemmed_token in self.token_sentiment:
-                    final_score -= int(self.token_sentiment[stemmed_token])
+                # if token is strong_neutral, sentiment is neutral, so skip word
+                # if token is strong_neg, sentiment is neutral, so skip word
+                # if token is strong_pos, sentiment is normal neg
+                if token not in strong_neutral_match and token not in strong_neg_match:
+                    for pattern, replacement in self.special_tokens.items():
+                        if re.search(pattern, token):
+                            stemmed_token = replacement
+                            break
+                        else:
+                            stemmed_token = self.stemmer.stem(token)
+                    # update score if there is sentiment (mind that this is negative sentiment)
+                    if stemmed_token in self.token_sentiment:
+                        final_score -= int(self.token_sentiment[stemmed_token])
+
         # delete negation sequences from original input
         for sequence in neg_seq:
             if sequence.endswith(' '):
                 sequence = sequence.rstrip()
-            input = input.replace(sequence, "")
+            input = input.replace(sequence, "")  
+
         # go through the rest of the input and update sentiment score
         remaining_tokens = input.split()
         for token in remaining_tokens:
-            for pattern, replacement in self.special_tokens.items():
-                    if re.search(pattern, token):
-                        stemmed_token = replacement
-                        break
-                    else:
-                        stemmed_token = self.stemmer.stem(token)
-            # update score if there is sentiment
-            if stemmed_token in self.token_sentiment:
-                final_score += int(self.token_sentiment[stemmed_token])  
-        # return the sentiment
-        if final_score >= 1:
-            return 1
-        elif final_score == 0:
-            return 0
-        else:
-            return -1
-    
+            # Case 1: if token is a strong neg/pos word, add to strong word calc
+            if token in strong_neutral_match:
+                # if "it was really good/bad", change neutral to True and check for later normal pos/neg words
+                strong_neutral = True 
+            elif token in strong_pos_match:
+                # if "it was great / i loved it", add to strong_pos calc
+                strong_pos += 1
+            elif token in strong_neg_match:
+                # if "i hated it / it was terrible", add to strong_neg calc
+                strong_neg += 1
+            # Case 2: if token is not a strong word, go through normal process and add to sentiment calc
+            else:
+                for pattern, replacement in self.special_tokens.items():
+                        if re.search(pattern, token):
+                            stemmed_token = replacement
+                            break
+                        else:
+                            stemmed_token = self.stemmer.stem(token)
+                # update score if there is sentiment
+                if stemmed_token in self.token_sentiment:
+                    final_score += int(self.token_sentiment[stemmed_token]) 
+
+        # compare strong_pos & strong_neg
+        result = 0
+        if strong_neg > strong_pos:
+            result = -2
+        elif strong_pos > strong_neg:
+            result = 2
+        elif strong_pos == strong_neg:
+            result = 0
+
+        # compare final score and strong_neutral
+        # "really good / really bad"
+        if strong_pos == strong_neg == 0 and strong_neutral == True:
+            if final_score >= 1:
+                return 2
+            elif final_score == 0:
+                return 0
+            else:
+                return -2
+        # "it was good / bad"
+        elif strong_pos == strong_neg == 0 and strong_neutral == False:
+            if final_score >= 1:
+                return 1
+            elif final_score == 0:
+                return 0
+            else:
+                return -1
+        # when there are strong words present
+        elif strong_pos != 0 and strong_neg != 0:
+            # when final score is needed for consideration
+            if final_score >= 3 or final_score <= -3 and result != 0:
+                # final score pos, result neg OR final score neg, result pos, revert
+                if (final_score > 0 and result == -2) or (final_score < 0 and result == 2):
+                    result *= -1
+                    return result
+                # final score pos and result pos OR final score neg and result neg
+                else:
+                    return result
+            # "it was terrible and great and good happy cheerful"
+            elif final_score >= 3 or final_score <= -3 and result == 0:
+                if final_score >= 3:
+                    return 2
+                elif final_score <= 3:
+                    return -2
+            # "it was terrible / great"
+            else:
+                return result
 
     def extract_sentiment(self, preprocessed_input):
         """rachel - this function combines the two functions
@@ -822,7 +894,7 @@ class Chatbot:
         :returns: a list of tuples, where the first item in the tuple is a movie
         title, and the second is the sentiment in the text toward that movie
         """
-        
+        pass
 
     def get_minimum_edit_distance(self, str1, str2, max_distance):
         """Maeghan: calculates minimum edit distance between two words. """
